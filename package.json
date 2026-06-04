@@ -1,0 +1,17 @@
+{
+  "name": "ai-doctor-mern-root",
+  "version": "1.0.0",
+  "description": "Root orchestrator for MERN AI-DOCTOR Portal",
+  "type": "module",
+  "scripts": {
+    "install:backend": "cd backend && npm install",
+    "install:frontend": "cd frontend && npm install",
+    "install-all": "npm install && npm run install:backend && npm run install:frontend",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\""
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
