@@ -1247,6 +1247,14 @@ Rules: Keep sentences short and clear so the web speech synthesizer can read the
   }
 });
 
+// Serve frontend static build files in production mode
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../frontend/dist")));
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
+  });
+}
+
 app.listen(PORT, () => {
   console.log(`MERN Backend running at http://localhost:${PORT}`);
 });
