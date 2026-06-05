@@ -117,3 +117,7 @@ Whenever new vital arrays are saved, the risk levels are recalculated dynamicall
 *   🔴 **High Risk**: Systolic BP $\ge$ 140 mmHg OR Sugar $\ge$ 180 mg/dL.
 *   🟡 **Medium Risk**: Systolic BP $\ge$ 130 mmHg OR Sugar $\ge$ 120 mg/dL.
 *   🟢 **Low Risk**: Standard vital thresholds.
+
+## 🔒 License & Configuration
+© 2026 AI-DOCTOR Secure Medical Network. All rights reserved.
+Developer : YOGESH SWAMI
