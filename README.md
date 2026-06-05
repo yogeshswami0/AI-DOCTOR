@@ -118,6 +118,11 @@ Whenever new vital arrays are saved, the risk levels are recalculated dynamicall
 *   🟡 **Medium Risk**: Systolic BP $\ge$ 130 mmHg OR Sugar $\ge$ 120 mg/dL.
 *   🟢 **Low Risk**: Standard vital thresholds.
 
+---
+
+## official platform website
+https://ai-doctor-1fy2.onrender.com
+
 ## 🔒 License & Configuration
 © 2026 AI-DOCTOR Secure Medical Network. All rights reserved.
 Developer : YOGESH SWAMI
