@@ -392,7 +392,7 @@ export default function AuthPortal({ onAuthSuccess, triggerToast }) {
           <div className="auth-visual-overlay" />
           <div className="auth-visual-wrapper">
             <img 
-              src="dist/ai_doctor_login_illustration.jpg" 
+              src="/ai_doctor_login_illustration.jpg" 
               alt="AI Doctor & Hospital ward Diagnostics" 
               className="auth-visual-bg"
             />
