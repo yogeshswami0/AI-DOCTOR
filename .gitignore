@@ -17,3 +17,8 @@ yarn-debug.log*
 yarn-error.log*
 .DS_Store
 Thumbs.db
+
+# User uploaded files and databases
+backend/uploads/
+backend/data/db.json
+backend/scratch_test.js

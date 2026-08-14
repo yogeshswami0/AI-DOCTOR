@@ -1,0 +1,237 @@
+[
+  {
+    "category": "Hypertension (High Blood Pressure)",
+    "keywords": ["bp", "blood pressure", "hypertension", "systolic", "diastolic", "lisinopril", "high bp"],
+    "content": "Hypertension (high blood pressure) is diagnosed when blood pressure readings are consistently high. Normal blood pressure is below 120/80 mmHg. Elevated blood pressure is 120-129/<80. Stage 1 hypertension is 130-139/80-89. Stage 2 hypertension is 140/90 or higher. Common treatments include lifestyle changes, reducing sodium intake, daily exercise, and medications such as Lisinopril, Amlodipine, or Losartan. A hypertensive emergency is a sudden spike (e.g. Systolic over 180 or Diastolic over 120) accompanied by symptoms like chest pain, shortness of breath, back pain, numbness, or difficulty speaking; patients experiencing this must seek emergency care immediately."
+  },
+  {
+    "category": "Diabetes & Blood Sugar",
+    "keywords": ["sugar", "blood sugar", "diabetes", "metformin", "hba1c", "glucose", "insulin"],
+    "content": "Diabetes is a chronic condition characterized by high levels of blood glucose. Normal fasting blood sugar is under 100 mg/dL. Prediabetes is 100-125 mg/dL, and diabetes is 126 mg/dL or higher. Post-prandial (after meal) blood sugar should ideally be below 140 mg/dL (under 180 mg/dL for diabetics). Common medications include Metformin, Sulfonylureas, and Insulin. Warning side effects of Metformin include gastrointestinal distress (diarrhea, cramping), and it is contraindicated during contrast CT procedures due to the risk of lactic acidosis. Symptoms of hypoglycemia (low blood sugar <70 mg/dL) include shakiness, sweating, dizziness, and confusion; it requires fast-acting carbohydrates (15g rule, e.g., fruit juice, candy)."
+  },
+  {
+    "category": "Cardiac Emergency & Heart Disease",
+    "keywords": ["heart", "cardiac", "chest pain", "angina", "attack", "emergency", "er", "911"],
+    "content": "Heart disease describes conditions affecting the heart, including coronary artery disease. Angina is chest discomfort caused by temporary poor blood flow. A myocardial infarction (heart attack) occurs when blood flow to the heart muscle is severely blocked. Symptoms include crushing chest pain or pressure, radiating pain down the left arm or to the neck/jaw, shortness of breath, cold sweats, and nausea. If a patient experiences crushing chest pressure radiating to the arm with sweating, call 911 or visit the emergency room immediately. Nitroglycerin can be administered if prescribed. Do not delay medical intervention."
+  },
+  {
+    "category": "Pediatric Amoxicillin Dosage",
+    "keywords": ["pediatric", "child", "dosage", "amoxicillin", "dose", "antibiotic", "fever", "weight"],
+    "content": "Amoxicillin is a common pediatric antibiotic used for ear infections, strep throat, and pneumonia. Pediatric dosing is strictly weight-based. The standard dose for mild-to-moderate infections is 25-45 mg/kg/day divided into 2 doses every 12 hours. For severe infections (like acute otitis media), the high-dose protocol is 80-90 mg/kg/day divided every 12 hours. Example: A child weighing 20 kg on the high-dose protocol (90 mg/kg/day) requires 1800 mg per day, which translates to 900 mg every 12 hours. Parents must always use the graduated measuring syringe or cup provided, complete the full course of therapy even if symptoms improve, and consult a pediatrician or pharmacist to verify calculations."
+  },
+  {
+    "category": "Common Cold, Cough & Allergies",
+    "keywords": ["cold", "cough", "runny nose", "allergy", "fever", "mild", "antihistamine", "congestion"],
+    "content": "The common cold is a viral respiratory tract infection. Symptoms include a runny nose, dry cough, mild sore throat, and congestion. It is self-limiting and resolved with rest, hydration, and over-the-counter support (e.g. saline nasal sprays, paracetamol/acetaminophen for pain or low-grade fever). Antibiotics are not effective against viral colds. Allergic rhinitis (allergies) causes similar symptoms plus itchy eyes and sneezing, commonly treated with non-sedating antihistamines like Cetirizine, Loratadine, or nasal steroid sprays. Consult a physician if symptoms persist beyond 10 days, or if high fever and severe breathing difficulty develop."
+  },
+  {
+    "category": "Beta-Blockers and Asthma Contraindications",
+    "keywords": ["beta-blocker", "asthma", "propranolol", "bronchospasm", "atenolol", "metoprolol", "wheezing"],
+    "content": "Beta-blockers (e.g., Propranolol, Metoprolol, Atenolol) are commonly prescribed for hypertension, heart failure, and anxiety. However, non-selective beta-blockers like Propranolol are highly contraindicated in asthmatic patients. They block beta-2 receptors in the lungs, which can cause severe bronchoconstriction, wheezing, and a potentially fatal asthma attack. Selective beta-1 blockers (e.g. Metoprolol, Atenolol) are safer but should still be used with extreme caution. Asthmatic patients requiring cardiovascular medications must consult their cardiologist for safe alternatives such as Calcium Channel Blockers (e.g., Amlodipine)."
+  },
+  {
+    "category": "Asthma Management & Inhalers",
+    "keywords": ["asthma", "inhaler", "albuterol", "wheezing", "shortness of breath", "corticosteroid"],
+    "content": "Asthma is a chronic inflammatory disease of the airways causing wheezing, shortness of breath, and coughing. Management relies on two types of inhalers: Rescue inhalers (short-acting beta-agonists like Albuterol) for immediate relief of acute symptoms, and Controller inhalers (inhaled corticosteroids like Fluticasone) for daily prevention of inflammation. Patients should use a spacer with MDI inhalers to ensure medication reaches the lungs. An asthma attack unresponsive to a rescue inhaler (requiring use more than every 4 hours) or accompanied by cyanosis (bluish lips) is a medical emergency."
+  },
+  {
+    "category": "Gastroesophageal Reflux Disease (GERD)",
+    "keywords": ["gerd", "acid reflux", "heartburn", "omeprazole", "antacid", "stomach"],
+    "content": "GERD occurs when stomach acid frequently flows back into the tube connecting the mouth and stomach (esophagus). Symptoms include a burning sensation in the chest (heartburn), usually after eating, which might be worse at night. Management includes lifestyle changes: elevating the head of the bed, avoiding meals 3 hours before sleep, and limiting trigger foods (spicy, fatty, caffeine, alcohol). Medications include Antacids for quick relief, H2 blockers (Famotidine), and Proton Pump Inhibitors (PPIs like Omeprazole or Pantoprazole) for healing the esophagus."
+  },
+  {
+    "category": "Hypothyroidism",
+    "keywords": ["thyroid", "hypothyroidism", "levothyroxine", "fatigue", "weight gain", "tsh"],
+    "content": "Hypothyroidism is an underactive thyroid gland, meaning it doesn't produce enough thyroid hormones. Common symptoms include severe fatigue, unexplained weight gain, cold intolerance, dry skin, and constipation. Diagnosis is confirmed by a high TSH (Thyroid Stimulating Hormone) and low Free T4 level. The standard treatment is daily synthetic thyroid hormone replacement (Levothyroxine). Levothyroxine must be taken on an empty stomach, ideally 30-60 minutes before breakfast, and spaced at least 4 hours apart from calcium or iron supplements."
+  },
+  {
+    "category": "Migraine Headaches",
+    "keywords": ["migraine", "headache", "aura", "triptans", "sumatriptan", "photophobia", "nausea"],
+    "content": "Migraines are severe, throbbing headaches often on one side of the head, frequently accompanied by nausea, vomiting, and extreme sensitivity to light (photophobia) and sound. Some patients experience sensory warnings called an 'aura' before the pain begins. Abortive treatments taken at the onset of symptoms include NSAIDs (Ibuprofen) and Triptans (e.g., Sumatriptan). Preventive medications are considered for chronic migraines and include beta-blockers, anti-seizure drugs (Topiramate), or CGRP inhibitors."
+  },
+  {
+    "category": "Stroke (CVA) Protocol",
+    "keywords": ["stroke", "cva", "fast", "numbness", "weakness", "speech", "tpa", "emergency"],
+    "content": "A stroke occurs when the blood supply to part of the brain is interrupted or reduced. Remember the FAST acronym for symptoms: Face drooping, Arm weakness, Speech difficulty, Time to call emergency services. Other symptoms include sudden confusion, trouble seeing, or severe headache. A stroke is a critical medical emergency. Time is brain tissue; ischemic strokes may be treated with clot-busting drugs (tPA) if the patient arrives at the hospital within a 3 to 4.5-hour window from symptom onset."
+  },
+  {
+    "category": "Urinary Tract Infection (UTI)",
+    "keywords": ["uti", "urine", "burning", "infection", "bladder", "antibiotic", "macrobid", "bactrim"],
+    "content": "A UTI is an infection in any part of the urinary system, most commonly the bladder and urethra. Symptoms include a strong, persistent urge to urinate, a burning sensation when urinating, passing frequent small amounts of urine, and cloudy or strong-smelling urine. Uncomplicated UTIs are treated with oral antibiotics such as Nitrofurantoin (Macrobid), Trimethoprim/Sulfamethoxazole (Bactrim), or Fosfomycin. Patients are advised to drink plenty of water to help flush bacteria from the urinary tract. Flank pain and high fever may indicate a kidney infection requiring urgent care."
+  },
+  {
+    "category": "Osteoarthritis",
+    "keywords": ["arthritis", "joint pain", "osteoarthritis", "stiffness", "knees", "nsaids", "cartilage"],
+    "content": "Osteoarthritis is the most common form of arthritis, occurring when the protective cartilage that cushions the ends of bones wears down over time. It most commonly affects joints in the hands, knees, hips, and spine. Symptoms include pain during or after movement, joint stiffness (especially upon waking), tenderness, and loss of flexibility. Management focuses on maintaining a healthy weight, physical therapy to strengthen muscles around the joint, and pain relief using Acetaminophen, topical NSAIDs, or oral NSAIDs like Ibuprofen or Meloxicam."
+  },
+  {
+    "category": "Hyperlipidemia (High Cholesterol)",
+    "keywords": ["cholesterol", "hyperlipidemia", "statins", "ldl", "hdl", "atorvastatin", "plaque"],
+    "content": "Hyperlipidemia refers to high levels of lipids (fats), such as cholesterol and triglycerides, in the blood. Elevated LDL ('bad' cholesterol) increases the risk of plaque buildup in arteries, leading to heart disease and stroke. HDL is considered 'good' cholesterol. First-line management includes a heart-healthy diet (Mediterranean diet), exercise, and weight management. Statins (e.g., Atorvastatin, Rosuvastatin) are the most common medications prescribed to lower LDL cholesterol. Patients on statins should report unexplained muscle pain to their doctor."
+  },
+  {
+    "category": "Major Depressive Disorder (MDD)",
+    "keywords": ["depression", "mdd", "sadness", "ssri", "lexapro", "sertraline", "fatigue"],
+    "content": "Major Depressive Disorder is a mood disorder causing a persistent feeling of sadness and loss of interest in previously enjoyed activities. Symptoms must last at least two weeks and can include changes in sleep (insomnia or hypersomnia), appetite changes, fatigue, difficulty concentrating, and feelings of worthlessness. Treatment generally involves psychotherapy (such as CBT) and antidepressant medications. SSRIs (Selective Serotonin Reuptake Inhibitors) like Sertraline, Escitalopram, or Fluoxetine are common first-line treatments. It can take 4-6 weeks for these medications to take full effect."
+  },
+  {
+    "category": "Generalized Anxiety Disorder (GAD)",
+    "keywords": ["anxiety", "gad", "worry", "panic", "ssri", "benzodiazepine", "stress"],
+    "content": "Generalized Anxiety Disorder involves persistent and excessive worry about various things (health, work, routine events) that is difficult to control and interferes with daily life. Symptoms include restlessness, fatigue, muscle tension, and sleep disturbances. Treatment includes psychotherapy (Cognitive Behavioral Therapy) and medications. SSRIs and SNRIs are preferred for long-term management. Benzodiazepines (e.g., Alprazolam, Lorazepam) may be prescribed for short-term relief of severe acute anxiety but carry a high risk of dependence and tolerance."
+  },
+  {
+    "category": "Anaphylaxis (Severe Allergic Reaction)",
+    "keywords": ["anaphylaxis", "allergy", "epipen", "epinephrine", "throat swelling", "hives", "emergency"],
+    "content": "Anaphylaxis is a severe, potentially life-threatening allergic reaction that can occur within seconds or minutes of exposure to an allergen (like peanuts, bee stings, or certain medications). Symptoms include a skin rash/hives, nausea, vomiting, difficulty breathing, throat swelling, and a drop in blood pressure (shock). The first-line emergency treatment is an immediate intramuscular injection of Epinephrine (e.g., EpiPen) into the outer thigh. After administering epinephrine, the patient must be taken to the emergency room immediately, as symptoms can recur (biphasic reaction)."
+  },
+  {
+    "category": "Chronic Obstructive Pulmonary Disease (COPD)",
+    "keywords": ["copd", "emphysema", "bronchitis", "smoking", "shortness of breath", "inhaler", "oxygen"],
+    "content": "COPD is a chronic inflammatory lung disease that causes obstructed airflow from the lungs, heavily linked to long-term cigarette smoking. It includes emphysema and chronic bronchitis. Symptoms include breathing difficulty, cough, mucus production, and wheezing. Damage to the lungs is irreversible. Treatment focuses on symptom control and preventing exacerbations, primarily through smoking cessation. Medications include bronchodilators (LAMA/LABA combinations) and inhaled corticosteroids. Severe cases may require supplemental oxygen therapy."
+  },
+  {
+    "category": "Iron Deficiency Anemia",
+    "keywords": ["anemia", "iron", "fatigue", "pale", "ferrous sulfate", "hemoglobin", "blood loss"],
+    "content": "Iron deficiency anemia is a condition where blood lacks adequate healthy red blood cells due to insufficient iron, which is necessary to produce hemoglobin. Common causes include chronic blood loss (e.g., heavy menstrual periods, GI bleeding) and poor dietary intake. Symptoms include extreme fatigue, weakness, pale skin, chest pain, and cold hands and feet. Diagnosis is via a CBC showing low hemoglobin and a low ferritin level. Treatment involves oral iron supplements (e.g., Ferrous Sulfate), which are best absorbed on an empty stomach with Vitamin C (like orange juice). Black stools are a normal side effect of iron supplements."
+  },
+  {
+    "category": "Gout and Uric Acid",
+    "keywords": ["gout", "uric acid", "toe pain", "allopurinol", "colchicine", "flare-up", "purine"],
+    "content": "Gout is a complex form of inflammatory arthritis characterized by sudden, severe attacks of pain, swelling, redness, and tenderness, most commonly in the joint at the base of the big toe. It is caused by the accumulation of urate crystals in the joint due to high levels of uric acid in the blood. Acute flare-ups are treated with NSAIDs (Indomethacin), Colchicine, or Corticosteroids. Long-term management to prevent attacks involves uric acid-lowering medications like Allopurinol and lifestyle changes, such as avoiding high-purine foods (red meat, seafood) and alcohol."
+  },
+  {
+    "category": "Pneumonia",
+    "keywords": ["pneumonia", "lungs", "infection", "cough", "fever", "antibiotics", "chest x-ray"],
+    "content": "Pneumonia is an infection that inflames the air sacs in one or both lungs, which may fill with fluid or pus. It can be caused by bacteria, viruses, or fungi. Symptoms range from mild to life-threatening and include a cough with phlegm or pus, fever, chills, and difficulty breathing. Bacterial pneumonia is treated with antibiotics (e.g., Azithromycin, Amoxicillin, or Doxycycline), while viral pneumonia requires supportive care and rest. Severe cases, especially in the elderly or immunocompromised, often require hospitalization for IV fluids and respiratory support."
+  },
+  {
+    "category": "Deep Vein Thrombosis (DVT) and Pulmonary Embolism (PE)",
+    "keywords": ["dvt", "pe", "blood clot", "leg swelling", "anticoagulant", "chest pain", "eliquis", "xarelto"],
+    "content": "A DVT is a blood clot that forms in a deep vein, usually in the leg, causing swelling, pain, and redness. If a DVT breaks loose, it can travel to the lungs, causing a Pulmonary Embolism (PE), a life-threatening emergency characterized by sudden shortness of breath and chest pain. Risk factors include prolonged immobility (e.g., long flights), surgery, pregnancy, and certain medications (like oral contraceptives). Treatment requires immediate anticoagulation therapy (blood thinners) such as Apixaban (Eliquis), Rivaroxaban (Xarelto), or Heparin to prevent the clot from growing while the body slowly dissolves it."
+  },
+  {
+    "category": "Peptic Ulcer Disease",
+    "keywords": ["ulcer", "stomach pain", "pud", "h. pylori", "nsaid", "ppi", "bleeding"],
+    "content": "Peptic ulcers are open sores that develop on the inside lining of the stomach and the upper portion of the small intestine. The most common symptom is burning stomach pain. The two primary causes are infection with the bacterium Helicobacter pylori (H. pylori) and long-term use of NSAIDs (like Ibuprofen or Naproxen). Treatment usually involves a Proton Pump Inhibitor (PPI) to reduce stomach acid and allow healing, along with antibiotics if H. pylori is present. Dark, tarry stools or vomiting blood are signs of a bleeding ulcer and require immediate emergency care."
+  },
+  {
+    "category": "Chronic Kidney Disease (CKD)",
+    "keywords": ["ckd", "kidney", "renal", "creatinine", "gfr", "dialysis", "proteinuria"],
+    "content": "CKD involves the gradual loss of kidney function over time. The kidneys filter wastes and excess fluids from the blood. High blood pressure and diabetes are the leading causes. Early stages often have no symptoms. As it progresses, symptoms can include swelling in ankles/feet, fatigue, changes in urination frequency, and high blood pressure. Kidney function is measured by the eGFR (estimated Glomerular Filtration Rate) and creatinine levels. Management focuses on slowing progression by strictly controlling blood pressure and blood sugar. End-stage renal disease (ESRD) requires dialysis or a kidney transplant."
+  },
+  {
+    "category": "Acne Vulgaris",
+    "keywords": ["acne", "pimples", "breakout", "salicylic acid", "benzoyl peroxide", "retinoids", "dermatology"],
+    "content": "Acne is a skin condition that occurs when hair follicles become plugged with oil and dead skin cells, causing whiteheads, blackheads, or pimples. Over-the-counter treatments include salicylic acid and benzoyl peroxide. For moderate to severe acne, dermatologists may prescribe topical retinoids (e.g., Tretinoin), topical or oral antibiotics (e.g., Doxycycline), or hormonal therapies. Isotretinoin (Accutane) is highly effective for severe, cystic acne but carries a risk of severe birth defects and requires strict monitoring and pregnancy prevention."
+  },
+  {
+    "category": "Acetaminophen Toxicity",
+    "keywords": ["tylenol", "acetaminophen", "paracetamol", "overdose", "liver", "hepatotoxicity", "nac"],
+    "content": "Acetaminophen (Tylenol/Paracetamol) is a common pain reliever and fever reducer. However, it is highly toxic to the liver in large doses. The maximum recommended daily dose for a healthy adult is 4,000 mg (4 grams). Overdose is a leading cause of acute liver failure. Symptoms of overdose initially include nausea and vomiting, followed by liver pain and jaundice days later. N-acetylcysteine (NAC) is the specific antidote for acetaminophen overdose and must be administered promptly in a hospital setting."
+  },
+  {
+    "category": "NSAID Side Effects & Contraindications",
+    "keywords": ["nsaid", "ibuprofen", "naproxen", "kidney", "stomach", "bleeding", "blood pressure"],
+    "content": "Nonsteroidal anti-inflammatory drugs (NSAIDs) like Ibuprofen, Naproxen, and Diclofenac are widely used for pain, inflammation, and fever. Prolonged use carries significant risks, primarily gastrointestinal bleeding/ulcers and acute kidney injury. They can also increase blood pressure and the risk of heart attacks and strokes. NSAIDs are contraindicated in patients with severe kidney disease, a history of stomach ulcers, heart failure, and during the third trimester of pregnancy."
+  },
+  {
+    "category": "COVID-19 (SARS-CoV-2)",
+    "keywords": ["covid", "coronavirus", "fever", "cough", "loss of taste", "paxlovid", "isolation"],
+    "content": "COVID-19 is a highly contagious respiratory illness. Symptoms range from mild to severe and include fever, chills, cough, shortness of breath, fatigue, muscle aches, and new loss of taste or smell. High-risk patients may be treated with antiviral medications like Nirmatrelvir/Ritonavir (Paxlovid) if started within 5 days of symptom onset. Patients should isolate according to current local health guidelines to prevent transmission. Emergency warning signs include trouble breathing, persistent chest pain, new confusion, or pale, gray, or blue-colored skin, lips, or nail beds."
+  },
+  {
+    "category": "Influenza (The Flu)",
+    "keywords": ["flu", "influenza", "fever", "body aches", "tamiflu", "vaccine", "chills"],
+    "content": "Influenza is a viral infection that attacks the respiratory system. Unlike a common cold, the flu usually comes on suddenly. Symptoms include high fever, severe muscle/body aches, chills, sweats, headache, dry cough, and extreme fatigue. Annual vaccination is the most effective prevention. Antiviral drugs like Oseltamivir (Tamiflu) can reduce the duration and severity of the illness if taken within the first 48 hours of symptom onset. High-risk groups (elderly, pregnant women, young children) are most prone to complications like pneumonia."
+  },
+  {
+    "category": "Polycystic Ovary Syndrome (PCOS)",
+    "keywords": ["pcos", "ovary", "irregular periods", "hirsutism", "insulin resistance", "metformin"],
+    "content": "PCOS is a hormonal disorder common among women of reproductive age. Symptoms include infrequent or prolonged menstrual periods, excess male hormone (androgen) levels leading to severe acne or excessive facial/body hair (hirsutism), and polycystic ovaries. PCOS is closely linked to insulin resistance and obesity, increasing the risk for type 2 diabetes. Management includes lifestyle and diet changes, hormonal birth control to regulate periods, and medications like Metformin to improve insulin resistance."
+  },
+  {
+    "category": "First Degree and Second Degree Burns",
+    "keywords": ["burn", "blister", "scald", "heat", "first aid", "aloe", "ointment"],
+    "content": "First-degree burns affect only the outer layer of skin (epidermis), causing redness and pain (e.g., a mild sunburn). Second-degree burns involve the dermis, causing severe pain, redness, and blistering. Immediate first aid involves running cool (not ice-cold) water over the burn for 10-20 minutes. Do NOT apply ice, butter, or toothpaste, as these can trap heat or cause infection. Blisters should not be popped. Antibiotic ointment and sterile non-stick bandages can be applied. Large second-degree burns or burns on the face, hands, or genitals require immediate medical evaluation."
+  },
+  {
+    "category": "Concussion Protocol",
+    "keywords": ["concussion", "head injury", "tbi", "dizziness", "confusion", "rest", "sports"],
+    "content": "A concussion is a mild traumatic brain injury caused by a bump, blow, or jolt to the head. Symptoms may not appear immediately and can include headache, confusion, lack of coordination, memory loss, nausea, vomiting, dizziness, ringing in the ears, and excessive fatigue. Loss of consciousness occurs in some, but not all, cases. Treatment requires immediate removal from sports or activities, physical and cognitive rest (limiting screen time), and a gradual, medically supervised return to normal activities. Repeated vomiting or worsening headaches warrant an immediate trip to the ER."
+  },
+  {
+    "category": "Azithromycin (Z-Pak) Usage",
+    "keywords": ["azithromycin", "z-pak", "antibiotic", "macrolide", "respiratory infection", "chlamydia"],
+    "content": "Azithromycin is a macrolide antibiotic used to treat a wide variety of bacterial infections, including respiratory infections (like bronchitis and pneumonia), skin infections, ear infections, and sexually transmitted diseases (like chlamydia). A common regimen is the 'Z-Pak', which consists of 500 mg on day 1, followed by 250 mg daily for days 2 through 5. It is known for having a long half-life, meaning it continues to fight bacteria for days after the last dose. Common side effects include mild nausea, diarrhea, and abdominal pain. It should be used with caution in patients with a history of QT interval prolongation on an ECG."
+  },
+  {
+    "category": "Prednisone (Systemic Corticosteroids)",
+    "keywords": ["prednisone", "steroid", "corticosteroid", "inflammation", "asthma", "taper", "immune"],
+    "content": "Prednisone is a potent oral corticosteroid used to quickly suppress inflammation and overactive immune responses. It is prescribed for severe asthma exacerbations, allergic reactions, rheumatoid arthritis, and autoimmune diseases. Short-term side effects include insomnia, increased appetite, weight gain, mood swings, and spikes in blood sugar. Long-term use can lead to osteoporosis, thin skin, and a suppressed immune system. It is critical that patients on long-term prednisone do not stop taking it abruptly; the dosage must be gradually tapered down to allow the adrenal glands to resume natural cortisol production."
+  },
+  {
+    "category": "Semaglutide (GLP-1 Agonists)",
+    "keywords": ["semaglutide", "ozempic", "wegovy", "glp-1", "weight loss", "diabetes", "insulin"],
+    "content": "Semaglutide (brand names Ozempic, Wegovy) is a GLP-1 receptor agonist administered via weekly subcutaneous injections. It is used to improve blood sugar control in adults with type 2 diabetes and for chronic weight management. It works by mimicking a hormone that stimulates insulin secretion in response to meals and slowing gastric emptying, which increases feelings of fullness. Common side effects are gastrointestinal, including nausea, vomiting, diarrhea, and constipation. Rare but serious risks include pancreatitis and a potential risk of thyroid C-cell tumors."
+  },
+  {
+    "category": "Warfarin (Anticoagulant) & INR",
+    "keywords": ["warfarin", "coumadin", "blood thinner", "inr", "vitamin k", "clot", "anticoagulant"],
+    "content": "Warfarin is an oral anticoagulant (blood thinner) used to treat and prevent blood clots, such as deep vein thrombosis (DVT), pulmonary embolism (PE), and clots associated with atrial fibrillation or artificial heart valves. Patients on Warfarin require strict, regular blood tests to monitor their PT/INR levels. The typical target INR is 2.0 to 3.0. A high INR increases bleeding risk, while a low INR increases clotting risk. The antidote for Warfarin toxicity is Vitamin K. Patients must maintain a consistent dietary intake of Vitamin K (found in leafy green vegetables) to keep their INR stable."
+  },
+  {
+    "category": "Gabapentin (Neuropathic Pain)",
+    "keywords": ["gabapentin", "neurontin", "nerve pain", "neuropathy", "seizure", "shingles", "diabetes"],
+    "content": "Gabapentin is an anticonvulsant medication primarily prescribed for partial seizures and neuropathic pain (nerve pain). It is highly effective for conditions like diabetic neuropathy, postherpetic neuralgia (nerve pain following shingles), and restless legs syndrome. It works by altering electrical activity in the brain and influencing the activity of neurotransmitters. The most common side effects are dizziness, drowsiness, fatigue, and peripheral edema (swelling in the extremities). Patients are advised not to drive or operate heavy machinery until they know how the medication affects them."
+  },
+  {
+    "category": "Ondansetron (Zofran) for Nausea",
+    "keywords": ["ondansetron", "zofran", "nausea", "vomiting", "antiemetic", "chemotherapy", "pregnancy"],
+    "content": "Ondansetron is a highly effective antiemetic medication used to prevent nausea and vomiting. It belongs to a class of drugs called 5-HT3 receptor antagonists, which block serotonin, a natural substance in the body that causes vomiting. It is widely used for nausea caused by chemotherapy, radiation therapy, and surgery. It is also frequently prescribed off-label for severe morning sickness in pregnancy (hyperemesis gravidarum) and acute gastroenteritis. Common side effects include headache, constipation, and fatigue. Like Azithromycin, it carries a small risk of prolonging the QT interval."
+  },
+  {
+    "category": "Furosemide (Loop Diuretics)",
+    "keywords": ["furosemide", "lasix", "diuretic", "water pill", "edema", "heart failure", "potassium"],
+    "content": "Furosemide (Lasix) is a potent 'loop diuretic' or water pill that prevents the body from absorbing too much salt, allowing the salt to instead be passed in the urine. It is used to treat fluid retention (edema) in people with congestive heart failure, liver disease, or kidney disorders, and can also treat high blood pressure. Because it forces the kidneys to excrete large amounts of water and electrolytes, patients are at a high risk for hypokalemia (low potassium). Patients on Furosemide often require potassium supplements and regular blood work to monitor electrolyte levels and kidney function."
+  },
+  {
+    "category": "Doxycycline (Tetracycline Antibiotic)",
+    "keywords": ["doxycycline", "antibiotic", "lyme disease", "acne", "sun sensitivity", "malaria"],
+    "content": "Doxycycline is a broad-spectrum tetracycline-class antibiotic. It is the first-line treatment for tick-borne diseases like Lyme disease and Rocky Mountain spotted fever. It is also used for severe acne, chlamydia, and malaria prophylaxis. Patients taking Doxycycline must be warned about photosensitivity; they will sunburn very quickly and severely, so rigorous sun protection is required. It should be taken with a full glass of water, and patients must remain upright for at least 30 minutes afterward to prevent severe esophageal irritation (pill esophagitis). It is contraindicated in pregnancy and children under 8 due to permanent tooth discoloration."
+  },
+  {
+    "category": "Tramadol (Atypical Opioid Analgesic)",
+    "keywords": ["tramadol", "ultram", "pain", "opioid", "serotonin", "seizure", "analgesic"],
+    "content": "Tramadol is a synthetic, centrally acting analgesic used to treat moderate to moderately severe pain. It is unique because it works through two mechanisms: it binds weakly to opioid receptors and it inhibits the reuptake of serotonin and norepinephrine. While generally considered to have a lower risk of addiction than traditional opioids, dependency can still occur. Important risks include a lowered seizure threshold (increasing the risk of seizures, especially in high doses or with other medications) and the potential for Serotonin Syndrome if combined with antidepressants like SSRIs or SNRIs."
+  },
+  {
+    "category": "Clopidogrel (Antiplatelet Therapy)",
+    "keywords": ["clopidogrel", "plavix", "antiplatelet", "stent", "heart attack", "stroke", "blood thinner"],
+    "content": "Clopidogrel (Plavix) is an antiplatelet medication that prevents platelets in the blood from sticking together and forming clots. It is critical for patients who have recently had a heart attack, a stroke, or who have had a coronary stent placed. Prematurely stopping Clopidogrel after receiving a heart stent can lead to a fatal stent thrombosis (clotting off of the stent). The main side effect is an increased risk of bleeding, including nosebleeds, easy bruising, and gastrointestinal bleeding. It is often prescribed alongside daily Aspirin, known as Dual Antiplatelet Therapy (DAPT)."
+  },
+  {
+    "category": "Naloxone (Narcan) & Opioid Overdose",
+    "keywords": ["naloxone", "narcan", "opioid", "overdose", "fentanyl", "heroin", "breathing"],
+    "content": "Naloxone (brand name Narcan) is a life-saving emergency medication designed to rapidly reverse opioid overdose. It is an opioid antagonist, meaning it binds to opioid receptors and can reverse and block the effects of other opioids, such as heroin, fentanyl, oxycodone, and morphine. It is most commonly administered as a nasal spray. The hallmark sign of an opioid overdose is severe respiratory depression (slow, shallow, or stopped breathing) and pinpoint pupils. Naloxone works within 2 to 5 minutes but wears off in 30 to 90 minutes; because many opioids last longer than Naloxone, the patient must receive emergency medical care immediately after administration."
+  },
+  {
+    "category": "Diphenhydramine (Benadryl)",
+    "keywords": ["diphenhydramine", "benadryl", "antihistamine", "allergy", "sleep", "drowsy", "hives"],
+    "content": "Diphenhydramine is a first-generation antihistamine used to relieve symptoms of allergy, hay fever, and the common cold. It is highly effective for acute allergic reactions like hives and itching. Because it readily crosses the blood-brain barrier, its most prominent side effect is significant drowsiness, leading to its frequent use as an over-the-counter sleep aid. It has strong anticholinergic effects, meaning it can cause dry mouth, blurred vision, constipation, and urinary retention. It should be used with extreme caution in the elderly, as it can cause severe confusion, delirium, and increase the risk of falls."
+  },
+  {
+    "category": "Pantoprazole (Proton Pump Inhibitor)",
+    "keywords": ["pantoprazole", "protonix", "ppi", "gerd", "acid reflux", "ulcer", "stomach acid"],
+    "content": "Pantoprazole is a Proton Pump Inhibitor (PPI) that decreases the amount of acid produced in the stomach. It is widely used to treat Gastroesophageal Reflux Disease (GERD), erosive esophagitis, and to heal peptic ulcers. It is often administered intravenously in the hospital for patients with severe gastrointestinal bleeding. While generally safe, long-term use of PPIs (over a year) has been associated with an increased risk of bone fractures (hip, wrist, or spine), Vitamin B12 deficiency, and an increased risk of Clostridium difficile (C. diff) intestinal infections."
+  },
+  {
+    "category": "Amiodarone (Antiarrhythmic)",
+    "keywords": ["amiodarone", "arrhythmia", "afib", "heart rhythm", "toxicity", "lungs", "thyroid"],
+    "content": "Amiodarone is a potent antiarrhythmic medication used to treat and prevent life-threatening irregular heartbeats, such as ventricular tachycardia, ventricular fibrillation, and severe atrial fibrillation. While highly effective, it has a massive side effect profile and a very long half-life (staying in the body for months). Patients on Amiodarone require rigorous monitoring because the drug can cause severe toxicity to the lungs (pulmonary fibrosis), the thyroid (both hyperthyroidism and hypothyroidism, as the drug contains high levels of iodine), the liver, and the eyes (corneal microdeposits)."
+  },
+  {
+    "category": "Spironolactone (Potassium-Sparing Diuretic)",
+    "keywords": ["spironolactone", "aldactone", "diuretic", "potassium", "heart failure", "pcos", "acne"],
+    "content": "Spironolactone is a potassium-sparing diuretic and aldosterone receptor antagonist. It is primarily used to treat heart failure, high blood pressure, and fluid retention (edema) associated with liver disease. Unlike Furosemide, it causes the body to retain potassium while excreting sodium and water, so patients must be monitored for hyperkalemia (dangerously high potassium). Off-label, it is highly effective in treating hormonal acne and excess hair growth (hirsutism) in women with Polycystic Ovary Syndrome (PCOS) because it blocks androgen (male hormone) receptors."
+  }
+]

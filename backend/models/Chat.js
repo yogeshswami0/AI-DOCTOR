@@ -9,6 +9,18 @@ const ChatMessageSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  fileUrl: {
+    type: String,
+    default: ""
+  },
+  fileName: {
+    type: String,
+    default: ""
+  },
+  fileType: {
+    type: String,
+    default: ""
+  },
   timestamp: {
     type: Date,
     default: Date.now

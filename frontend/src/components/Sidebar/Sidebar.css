@@ -1,0 +1,183 @@
+/* Sidebar Scoped Styles */
+
+.app-sidebar {
+  width: 280px;
+  background: #ffffff !important; /* Clean white sidebar */
+  border-right: 1px solid var(--border-color) !important;
+  display: flex;
+  flex-direction: column;
+  height: 100vh !important; /* Keep within screen bounds */
+  max-height: 100vh !important;
+  padding: 1.5rem 1rem;
+  flex-shrink: 0;
+  z-index: 100;
+  justify-content: space-between;
+  overflow-y: auto !important; /* Sidebar should be scrollable */
+}
+
+/* Custom scrollbar for sidebar scrollability */
+.app-sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+.app-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.app-sidebar::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.sidebar-brand {
+  margin-bottom: 2rem;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--border-radius-md);
+  color: var(--text-muted) !important;
+  font-family: var(--font-family-display);
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: all 0.25s ease;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar-link:hover {
+  background: var(--bg-card-inner) !important;
+  color: var(--text-main) !important;
+}
+
+.sidebar-link.active {
+  background: var(--bg-card-inner) !important;
+  color: var(--color-doctor-primary) !important;
+  border-left: 3px solid var(--color-doctor-primary) !important;
+}
+
+.sidebar-link.active.patient-link {
+  background: var(--bg-card-inner) !important;
+  color: var(--color-patient-primary) !important;
+  border-left: 3px solid var(--color-patient-primary) !important;
+}
+
+.sidebar-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg-card-inner) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--border-radius-md);
+  margin-bottom: 1rem;
+}
+
+.sidebar-profile-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-profile-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-main) !important;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.conn-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  background: var(--bg-card-inner) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 4px;
+  color: var(--text-muted) !important;
+  margin-bottom: 1rem;
+}
+
+.conn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.conn-mongo {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.conn-fallback {
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+}
+
+/* Dropdown Notification Banner list */
+.notification-dropdown {
+  position: absolute;
+  left: 0;
+  bottom: 110%;
+  width: 320px;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+  z-index: 150;
+  overflow: hidden;
+}
+
+.notification-header {
+  background: var(--bg-card-inner) !important;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-main) !important;
+}
+
+.notification-list {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.notification-item {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.notification-item:hover {
+  background: var(--bg-card-inner) !important;
+}
+
+.notification-item:last-child {
+  border-bottom: none;
+}
+
+.notification-item-title {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--text-main) !important;
+  margin-bottom: 2px;
+}
+
+.notification-item-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted) !important;
+}

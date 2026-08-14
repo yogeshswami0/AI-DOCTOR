@@ -1,0 +1,250 @@
+/* TriageChatbot Scoped Styles */
+
+.workspace-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Equal split for Chatbot and OCR Box */
+  gap: 1.5rem;
+  height: calc(100vh - 80px);
+  padding: 1.5rem;
+}
+
+.workspace-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.triage-engine-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--border-radius-md);
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
+}
+
+.engine-toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  padding: 1.25rem !important;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 250px;
+}
+
+.message {
+  padding: 0.75rem 1rem !important;
+  border-radius: 12px !important;
+  max-width: 75% !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+  font-size: 0.85rem !important;
+  line-height: 1.4 !important;
+}
+
+.assistant-msg {
+  background: var(--bg-card-inner) !important; /* slate-100 bubble */
+  color: var(--text-main) !important;
+  border: 1px solid var(--border-color) !important;
+  align-self: flex-start !important;
+  border-bottom-left-radius: 2px !important;
+}
+
+.user-msg {
+  background: var(--color-patient-primary) !important; /* Emerald-500 user green bubble */
+  color: #ffffff !important;
+  align-self: flex-end !important;
+  border-bottom-right-radius: 2px !important;
+}
+
+.user-msg strong, .user-msg a, .user-msg span {
+  color: #ffffff !important;
+}
+
+.chat-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.suggestion-tag {
+  background: var(--bg-card-inner) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-main) !important;
+  font-size: 0.75rem !important;
+  padding: 0.35rem 0.65rem !important;
+  border-radius: 20px !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+}
+
+.suggestion-tag:hover {
+  background: var(--border-color) !important;
+  color: var(--text-main) !important;
+}
+
+/* Scroller upload preview */
+.chat-file-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: var(--bg-card-inner) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: var(--text-main) !important;
+  margin-top: 0.5rem;
+}
+
+.chat-input-area {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.workspace-right-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.ocr-scanner-card {
+  padding: 1.5rem;
+}
+
+.scanner-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+  gap: 0.5rem;
+}
+
+.scanner-tab-btn {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.scanner-tab-btn.active {
+  color: var(--color-patient-primary);
+  border-bottom-color: var(--color-patient-primary);
+}
+
+.report-data-table {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  margin-top: 0.5rem !important;
+  background: var(--bg-card) !important;
+  border-radius: 6px !important;
+  overflow: hidden;
+}
+
+.report-data-table th, .report-data-table td {
+  border: 1px solid var(--border-color) !important;
+  padding: 0.6rem 0.75rem !important;
+  color: var(--text-main) !important;
+  font-size: 0.8rem !important;
+}
+
+.report-data-table th {
+  background: var(--bg-card-inner) !important;
+  font-weight: 600 !important;
+  color: var(--text-main) !important;
+  text-align: left !important;
+}
+
+.translation-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.translation-text-box {
+  background: var(--bg-card-inner) !important;
+  border: 1px solid var(--border-color) !important;
+  padding: 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-main) !important;
+  white-space: pre-wrap;
+}
+
+.audio-settings-card {
+  background: var(--bg-card-inner) !important;
+  border: 1px dashed var(--border-color) !important;
+  color: var(--text-muted) !important;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+/* Unified Chat Box Styling */
+.triage-chat-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  border-bottom: 4px solid #cbd5e1 !important; /* 3D Box extrusion */
+  border-radius: var(--border-radius-lg);
+  padding: 1.25rem !important;
+  gap: 1rem;
+}
+
+/* Remove separate card styling from nested elements */
+.triage-chat-card .triage-engine-card {
+  background: var(--bg-card-inner) !important;
+  border: 1px solid var(--border-color) !important;
+  border-bottom: 2px solid #cbd5e1 !important;
+  box-shadow: none !important;
+  margin-bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem !important;
+}
+
+.triage-chat-card .chat-messages {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.triage-chat-card .chat-input-area {
+  background: var(--bg-card-inner) !important;
+  border: 1px solid var(--border-color) !important;
+  padding: 0.6rem !important;
+  border-radius: var(--border-radius-md) !important;
+  margin-top: 0 !important;
+}

@@ -1,0 +1,131 @@
+/* MedicationScheduler Scoped Styles */
+
+.scheduler-layout {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 1.5rem;
+  height: calc(100vh - 80px);
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.scheduler-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.compliance-progress-box {
+  padding: 1.5rem;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.compliance-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.compliance-pct {
+  font-family: var(--font-family-display);
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--color-patient-primary);
+}
+
+.adherence-bar-container {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0 !important;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.adherence-bar-fill {
+  height: 100%;
+  background: var(--color-patient-primary);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.medication-card-item {
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15) !important;
+  border-radius: var(--border-radius-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.medication-card-item.dose-taken {
+  border-left: 4px solid #10b981;
+}
+
+.medication-card-item.dose-pending {
+  border-left: 4px solid #f59e0b;
+}
+
+.medication-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.medication-name {
+  font-family: var(--font-family-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.medication-details {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.medication-time {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+  background: #f1f5f9;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.medication-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.compliance-status {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.status-taken { color: #10b981; }
+.status-pending { color: #f59e0b; }
+
+.scheduler-form-card {
+  padding: 1.5rem;
+}
+
+.scheduler-form-card h4 {
+  font-family: var(--font-family-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
