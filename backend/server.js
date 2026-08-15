@@ -31,6 +31,19 @@ dotenv.config({
 // Global temporary cache for registration email OTPs
 const tempOtps = new Map();
 
+// Helper to resolve hostnames to IPv4 directly to bypass IPv6 blocks on hosting platforms
+const resolveSmtpHost = (hostname) => {
+  return new Promise((resolve) => {
+    dns.resolve4(hostname, (err, addresses) => {
+      if (err || !addresses || addresses.length === 0) {
+        resolve(hostname); // Fallback to original hostname if lookup fails
+      } else {
+        resolve(addresses[0]); // Prefer first resolved IPv4 address
+      }
+    });
+  });
+};
+
 // Helper to send registration verification OTP emails
 const sendOtpEmail = async (email, otp) => {
   const user = process.env.EMAIL_USER;
@@ -44,9 +57,16 @@ const sendOtpEmail = async (email, otp) => {
     return false;
   }
 
+  const smtpIp = await resolveSmtpHost("smtp.gmail.com");
+
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: smtpIp,
+    port: 465,
+    secure: true,
     auth: { user, pass },
+    tls: {
+      servername: "smtp.gmail.com" // Prevent certificate mismatch errors during TLS handshake
+    },
     connectionTimeout: 10000, // 10 seconds timeout
     greetingTimeout: 10000,
     socketTimeout: 15000
