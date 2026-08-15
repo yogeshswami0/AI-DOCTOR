@@ -14,7 +14,9 @@ import dns from "dns";
 
 // Force Node.js DNS resolver to prefer IPv4 first. This prevents ENETUNREACH errors 
 // on cloud platforms (like Render) that do not support outbound IPv6 routing.
-dns.setDefaultResultOrder("ipv4first");
+if (dns && typeof dns.setDefaultResultOrder === "function") {
+  dns.setDefaultResultOrder("ipv4first");
+}
 
 import Patient from "./models/Patient.js";
 import Chat from "./models/Chat.js";

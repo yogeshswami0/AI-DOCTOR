@@ -42,7 +42,12 @@ export default function AuthPortal({ onAuthSuccess, triggerToast }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: authForm.email })
         });
-        const data = await res.json();
+        let data = {};
+        try {
+          data = await res.json();
+        } catch (jsonErr) {
+          throw new Error("Server communication error (Bad Gateway or Offline). Please verify your backend server status.");
+        }
         if (!res.ok) throw new Error(data.error || "Failed to generate verification code.");
         
         setOtpSent(true);
