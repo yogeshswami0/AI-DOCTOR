@@ -61,17 +61,52 @@ const getOtpEmailTemplate = (otp) => `
 const sendOtpEmail = async (email, otp) => {
   const user = process.env.EMAIL_USER;
   const pass = process.env.EMAIL_PASS;
+  const resendKey = process.env.RESEND_API_KEY;
   
-  if (!user || !pass) {
+  if (!resendKey && (!user || !pass)) {
     if (process.env.NODE_ENV === "production") {
-      throw new Error("SMTP credentials (EMAIL_USER/EMAIL_PASS) are not configured.");
+      throw new Error("Email credentials are not configured. Please set RESEND_API_KEY or EMAIL_USER/EMAIL_PASS.");
     }
     console.log(`[SMTP SIMULATOR] Generated registration OTP for ${email}: ${otp}`);
     return false;
   }
 
-  const smtpIp = await resolveSmtpHost("smtp.gmail.com");
   const emailHtml = getOtpEmailTemplate(otp);
+
+  // If Resend API Key is configured, use the Resend HTTP API (avoids SMTP port blocks on Render/cloud environments)
+  if (resendKey) {
+    try {
+      console.log(`[EMAIL] Attempting delivery via Resend HTTP API to ${email}...`);
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: "AI-DOCTOR <onboarding@resend.dev>",
+          to: email,
+          subject: "AI-DOCTOR Portal - Registration Verification Code",
+          html: emailHtml
+        })
+      });
+      
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Resend API returned an error status.");
+      }
+      console.log("[EMAIL] Resend HTTP delivery succeeded!");
+      return true;
+    } catch (resendErr) {
+      console.error("[EMAIL] Resend HTTP delivery failed:", resendErr.message);
+      if (!user || !pass) {
+        throw new Error(`Resend HTTP delivery failed: ${resendErr.message}`);
+      }
+      console.log("[EMAIL] Falling back to standard SMTP configuration...");
+    }
+  }
+
+  const smtpIp = await resolveSmtpHost("smtp.gmail.com");
 
   // Attempt 1: Connect via Port 465 (SSL direct connection)
   try {
