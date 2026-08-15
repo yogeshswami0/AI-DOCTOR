@@ -17,7 +17,9 @@ import User from "./models/User.js";
 import Consultation from "./models/Consultation.js";
 import Medication from "./models/Medication.js";
 
-dotenv.config();
+dotenv.config({ 
+  path: path.join(path.dirname(fileURLToPath(import.meta.url)), ".env") 
+});
 
 // Global temporary cache for registration email OTPs
 const tempOtps = new Map();
