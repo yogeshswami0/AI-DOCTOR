@@ -869,11 +869,12 @@ app.post("/api/auth/send-otp", async (req, res) => {
     }
 
     if (sent) {
-      res.json({ message: "Verification OTP code sent to your email." });
+      res.json({ message: "Verification OTP code sent to your email. Please check your inbox." });
     } else {
       console.log(`[DEVELOPMENT BACKEND LOG] OTP code for ${email} is: ${otp}`);
-      return res.status(500).json({ 
-        error: "SMTP service is unconfigured. [Local Development Mode] Please copy the verification code from your backend node terminal console logs." 
+      res.json({ 
+        message: "Verification OTP code generated. [Local Development Mode] Please check your backend terminal console logs for the code.",
+        devMode: true 
       });
     }
   } catch (error) {

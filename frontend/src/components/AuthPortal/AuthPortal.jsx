@@ -46,7 +46,7 @@ export default function AuthPortal({ onAuthSuccess, triggerToast }) {
         if (!res.ok) throw new Error(data.error || "Failed to generate verification code.");
         
         setOtpSent(true);
-        triggerToast("Verification OTP sent to your email. Please check your inbox.", "success");
+        triggerToast(data.message || "Verification OTP sent to your email. Please check your inbox.", "success");
       } catch (err) {
         triggerToast(err.message, "error");
       } finally {
