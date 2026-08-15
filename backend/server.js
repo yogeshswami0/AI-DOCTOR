@@ -30,6 +30,9 @@ const sendOtpEmail = async (email, otp) => {
   const pass = process.env.EMAIL_PASS;
   
   if (!user || !pass) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("SMTP credentials (EMAIL_USER/EMAIL_PASS) are not configured.");
+    }
     console.log(`[SMTP SIMULATOR] Generated registration OTP for ${email}: ${otp}`);
     return false;
   }
@@ -864,15 +867,23 @@ app.post("/api/auth/send-otp", async (req, res) => {
     });
 
     let sent = false;
+    let mailError = null;
     try {
       sent = await sendOtpEmail(email, otp);
     } catch (mailErr) {
-      console.warn("Mail sending error, falling back to simulator:", mailErr.message);
+      console.error("Mail sending error:", mailErr.message);
+      mailError = mailErr.message;
     }
 
     if (sent) {
       res.json({ message: "Verification OTP code sent to your email. Please check your inbox." });
     } else {
+      if (process.env.NODE_ENV === "production") {
+        return res.status(500).json({ 
+          error: `Verification email delivery failed: ${mailError || "SMTP service is unconfigured."} Please check your server environment variable settings.` 
+        });
+      }
+
       console.log(`[DEVELOPMENT BACKEND LOG] OTP code for ${email} is: ${otp}`);
       res.json({ 
         message: "Verification OTP code generated. [Local Development Mode] Please check your backend terminal console logs for the code.",
