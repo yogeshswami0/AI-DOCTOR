@@ -11,6 +11,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import dns from "dns";
+import https from "https";
 
 // Force Node.js DNS resolver to prefer IPv4 first. This prevents ENETUNREACH errors 
 // on cloud platforms (like Render) that do not support outbound IPv6 routing.
@@ -57,6 +58,55 @@ const getOtpEmailTemplate = (otp) => `
   </div>
 `;
 
+// Helper to request email dispatch using Resend HTTPS Rest API endpoint natively
+const sendResendEmailHttps = (apiKey, to, subject, html) => {
+  return new Promise((resolve, reject) => {
+    const postData = JSON.stringify({
+      from: "AI-DOCTOR <onboarding@resend.dev>",
+      to,
+      subject,
+      html
+    });
+
+    const options = {
+      hostname: "api.resend.com",
+      path: "/emails",
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(postData)
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let responseBody = "";
+      res.on("data", (chunk) => {
+        responseBody += chunk;
+      });
+      res.on("end", () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(true);
+        } else {
+          let errMsg = `Resend API returned status code ${res.statusCode}`;
+          try {
+            const parsed = JSON.parse(responseBody);
+            if (parsed.message) errMsg = parsed.message;
+          } catch (e) {}
+          reject(new Error(errMsg));
+        }
+      });
+    });
+
+    req.on("error", (err) => {
+      reject(err);
+    });
+
+    req.write(postData);
+    req.end();
+  });
+};
+
 // Helper to send registration verification OTP emails using a self-healing port fallback
 const sendOtpEmail = async (email, otp) => {
   const user = process.env.EMAIL_USER;
@@ -76,25 +126,8 @@ const sendOtpEmail = async (email, otp) => {
   // If Resend API Key is configured, use the Resend HTTP API (avoids SMTP port blocks on Render/cloud environments)
   if (resendKey) {
     try {
-      console.log(`[EMAIL] Attempting delivery via Resend HTTP API to ${email}...`);
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${resendKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          from: "AI-DOCTOR <onboarding@resend.dev>",
-          to: email,
-          subject: "AI-DOCTOR Portal - Registration Verification Code",
-          html: emailHtml
-        })
-      });
-      
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.message || "Resend API returned an error status.");
-      }
+      console.log(`[EMAIL] Attempting delivery via Resend HTTPS Native Client to ${email}...`);
+      await sendResendEmailHttps(resendKey, email, "AI-DOCTOR Portal - Registration Verification Code", emailHtml);
       console.log("[EMAIL] Resend HTTP delivery succeeded!");
       return true;
     } catch (resendErr) {
