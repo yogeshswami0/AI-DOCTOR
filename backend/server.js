@@ -44,7 +44,20 @@ const resolveSmtpHost = (hostname) => {
   });
 };
 
-// Helper to send registration verification OTP emails
+// Helper to generate the HTML content for the registration OTP email
+const getOtpEmailTemplate = (otp) => `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+    <h2 style="color: #0284c7; text-align: center;">AI-DOCTOR Registration Code</h2>
+    <p>Hello,</p>
+    <p>Thank you for signing up with AI-DOCTOR Clinical Network. Please use the following 6-digit verification code to complete your registration:</p>
+    <div style="font-size: 24px; font-weight: bold; text-align: center; padding: 15px; background-color: #f1f5f9; color: #0f172a; border-radius: 6px; letter-spacing: 4px; margin: 20px 0;">
+      ${otp}
+    </div>
+    <p style="font-size: 12px; color: #64748b;">This code is valid for 5 minutes. If you did not request this, please ignore this email.</p>
+  </div>
+`;
+
+// Helper to send registration verification OTP emails using a self-healing port fallback
 const sendOtpEmail = async (email, otp) => {
   const user = process.env.EMAIL_USER;
   const pass = process.env.EMAIL_PASS;
@@ -58,39 +71,58 @@ const sendOtpEmail = async (email, otp) => {
   }
 
   const smtpIp = await resolveSmtpHost("smtp.gmail.com");
+  const emailHtml = getOtpEmailTemplate(otp);
 
-  const transporter = nodemailer.createTransport({
-    host: smtpIp,
-    port: 465,
-    secure: true,
-    auth: { user, pass },
-    tls: {
-      servername: "smtp.gmail.com" // Prevent certificate mismatch errors during TLS handshake
-    },
-    connectionTimeout: 10000, // 10 seconds timeout
-    greetingTimeout: 10000,
-    socketTimeout: 15000
-  });
-
-  const mailOptions = {
-    from: `"AI-DOCTOR Support" <${user}>`,
-    to: email,
-    subject: "AI-DOCTOR Portal - Registration Verification Code",
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-        <h2 style="color: #0284c7; text-align: center;">AI-DOCTOR Registration Code</h2>
-        <p>Hello,</p>
-        <p>Thank you for signing up with AI-DOCTOR Clinical Network. Please use the following 6-digit verification code to complete your registration:</p>
-        <div style="font-size: 24px; font-weight: bold; text-align: center; padding: 15px; background-color: #f1f5f9; color: #0f172a; border-radius: 6px; letter-spacing: 4px; margin: 20px 0;">
-          ${otp}
-        </div>
-        <p style="font-size: 12px; color: #64748b;">This code is valid for 5 minutes. If you did not request this, please ignore this email.</p>
-      </div>
-    `
-  };
-
-  await transporter.sendMail(mailOptions);
-  return true;
+  // Attempt 1: Connect via Port 465 (SSL direct connection)
+  try {
+    console.log(`[SMTP] Attempting delivery via Port 465 (SSL) to ${smtpIp}...`);
+    const transporter465 = nodemailer.createTransport({
+      host: smtpIp,
+      port: 465,
+      secure: true,
+      auth: { user, pass },
+      tls: { servername: "smtp.gmail.com" },
+      connectionTimeout: 4000, // Fail fast to try fallback quickly
+      greetingTimeout: 4000,
+      socketTimeout: 6000
+    });
+    await transporter465.sendMail({
+      from: `"AI-DOCTOR Support" <${user}>`,
+      to: email,
+      subject: "AI-DOCTOR Portal - Registration Verification Code",
+      html: emailHtml
+    });
+    console.log("[SMTP] Delivery succeeded on SSL (Port 465)!");
+    return true;
+  } catch (err465) {
+    console.warn(`[SMTP] Port 465 failed: ${err465.message}. Falling back to Port 587 (TLS/STARTTLS)...`);
+    
+    // Attempt 2: Connect via Port 587 (TLS Upgrade)
+    try {
+      console.log(`[SMTP] Attempting delivery via Port 587 (TLS) to ${smtpIp}...`);
+      const transporter587 = nodemailer.createTransport({
+        host: smtpIp,
+        port: 587,
+        secure: false, // Must be false for Port 587 STARTTLS upgrade
+        auth: { user, pass },
+        tls: { servername: "smtp.gmail.com" },
+        connectionTimeout: 4000,
+        greetingTimeout: 4000,
+        socketTimeout: 6000
+      });
+      await transporter587.sendMail({
+        from: `"AI-DOCTOR Support" <${user}>`,
+        to: email,
+        subject: "AI-DOCTOR Portal - Registration Verification Code",
+        html: emailHtml
+      });
+      console.log("[SMTP] Delivery succeeded on TLS (Port 587)!");
+      return true;
+    } catch (err587) {
+      console.error("[SMTP] Both Port 465 and Port 587 connection attempts failed.");
+      throw new Error(`SMTP connection failed. Port 465 SSL error: ${err465.message} | Port 587 TLS error: ${err587.message}`);
+    }
+  }
 };
 
 
