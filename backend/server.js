@@ -107,15 +107,73 @@ const sendResendEmailHttps = (apiKey, to, subject, html) => {
   });
 };
 
+// Helper to request email dispatch using Brevo HTTP Transactional API natively
+const sendBrevoEmailHttps = (apiKey, senderEmail, toEmail, subject, html) => {
+  return new Promise((resolve, reject) => {
+    const postData = JSON.stringify({
+      sender: {
+        name: "AI-DOCTOR Support",
+        email: senderEmail || "swamiyogesh670@gmail.com"
+      },
+      to: [
+        {
+          email: toEmail
+        }
+      ],
+      subject,
+      htmlContent: html
+    });
+
+    const options = {
+      hostname: "api.brevo.com",
+      path: "/v3/smtp/email",
+      method: "POST",
+      headers: {
+        "api-key": apiKey,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Content-Length": Buffer.byteLength(postData)
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let responseBody = "";
+      res.on("data", (chunk) => {
+        responseBody += chunk;
+      });
+      res.on("end", () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(true);
+        } else {
+          let errMsg = `Brevo API returned status code ${res.statusCode}`;
+          try {
+            const parsed = JSON.parse(responseBody);
+            if (parsed.message) errMsg = parsed.message;
+          } catch (e) {}
+          reject(new Error(errMsg));
+        }
+      });
+    });
+
+    req.on("error", (err) => {
+      reject(err);
+    });
+
+    req.write(postData);
+    req.end();
+  });
+};
+
 // Helper to send registration verification OTP emails using a self-healing port fallback
 const sendOtpEmail = async (email, otp) => {
   const user = process.env.EMAIL_USER;
   const pass = process.env.EMAIL_PASS;
   const resendKey = process.env.RESEND_API_KEY;
+  const brevoKey = process.env.BREVO_API_KEY;
   
-  if (!resendKey && (!user || !pass)) {
+  if (!brevoKey && !resendKey && (!user || !pass)) {
     if (process.env.NODE_ENV === "production") {
-      throw new Error("Email credentials are not configured. Please set RESEND_API_KEY or EMAIL_USER/EMAIL_PASS.");
+      throw new Error("Email credentials are not configured. Please set BREVO_API_KEY, RESEND_API_KEY, or EMAIL_USER/EMAIL_PASS.");
     }
     console.log(`[SMTP SIMULATOR] Generated registration OTP for ${email}: ${otp}`);
     return false;
@@ -123,7 +181,23 @@ const sendOtpEmail = async (email, otp) => {
 
   const emailHtml = getOtpEmailTemplate(otp);
 
-  // If Resend API Key is configured, use the Resend HTTP API (avoids SMTP port blocks on Render/cloud environments)
+  // 1. Try Brevo HTTP API first (avoids both SMTP blocks and Resend sandbox recipient limits)
+  if (brevoKey) {
+    try {
+      console.log(`[EMAIL] Attempting delivery via Brevo HTTPS Native Client to ${email}...`);
+      await sendBrevoEmailHttps(brevoKey, user, email, "AI-DOCTOR Portal - Registration Verification Code", emailHtml);
+      console.log("[EMAIL] Brevo HTTP delivery succeeded!");
+      return true;
+    } catch (brevoErr) {
+      console.error("[EMAIL] Brevo HTTP delivery failed:", brevoErr.message);
+      if (!resendKey && (!user || !pass)) {
+        throw new Error(`Brevo HTTP delivery failed: ${brevoErr.message}`);
+      }
+      console.log("[EMAIL] Falling back to next available email channel...");
+    }
+  }
+
+  // 2. Try Resend HTTP API (avoids SMTP port blocks on Render/cloud environments)
   if (resendKey) {
     try {
       console.log(`[EMAIL] Attempting delivery via Resend HTTPS Native Client to ${email}...`);
