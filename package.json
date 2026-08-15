@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "install:backend": "cd backend && npm install",
-    "install:frontend": "cd frontend && npm install",
+    "install:frontend": "cd frontend && npm install --production=false",
     "install-all": "npm run install:backend && npm run install:frontend",
     "build:frontend": "cd frontend && npm run build",
     "build": "npm run install-all && npm run build:frontend",
