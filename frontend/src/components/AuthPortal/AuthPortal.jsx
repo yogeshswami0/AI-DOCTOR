@@ -73,7 +73,12 @@ export default function AuthPortal({ onAuthSuccess, triggerToast }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (jsonErr) {
+        throw new Error("Server communication error (Bad Gateway or Offline). Please check your connection or try again later.");
+      }
       if (!res.ok) throw new Error(data.error || "Authentication failed.");
 
       onAuthSuccess(data);
