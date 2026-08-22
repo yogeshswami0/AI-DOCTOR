@@ -130,6 +130,39 @@ export default function TriageChatbot({
       triggerToast(err.message, "error");
     }
   };
+
+  const [isReportSaving, setIsReportSaving] = useState(false);
+
+  const handleSaveReportToProfile = async () => {
+    if (!parsedReport) return;
+    const defaultName = parsedReport._fileName || `Report - ${new Date().toLocaleDateString()}`;
+    const name = window.prompt("Enter a name for this report to save under your profile:", defaultName);
+    if (!name || !name.trim()) return;
+
+    setIsReportSaving(true);
+    try {
+      const res = await fetchWithAuth("/api/patient/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportName: name.trim(),
+          reportData: parsedReport
+        })
+      });
+      if (res.ok) {
+        triggerToast("Report saved to profile successfully!", "success");
+        if (fetchPatientProfile && user) fetchPatientProfile(user.id);
+      } else {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to save report.");
+      }
+    } catch (err) {
+      triggerToast(err.message, "error");
+    } finally {
+      setIsReportSaving(false);
+    }
+  };
+
   const [isTranslating, setIsTranslating] = useState(false);
 
   const patChatEndRef = useRef(null);
@@ -267,9 +300,6 @@ export default function TriageChatbot({
       setEnglishSummary(summaryText);
       setHindiSummary(""); // Reset translation until clicked
       triggerToast("Lab report structured successfully!", "success");
-      if (fetchPatientProfile && user) {
-        fetchPatientProfile(user.id);
-      }
     } catch (err) {
       triggerToast("Parsing failed: " + err.message, "error");
     } finally {
@@ -303,9 +333,6 @@ export default function TriageChatbot({
       setEnglishSummary(summaryText);
       setHindiSummary("");
       triggerToast("OCR file processed and structured!", "success");
-      if (fetchPatientProfile && user) {
-        fetchPatientProfile(user.id);
-      }
     } catch (err) {
       triggerToast(err.message, "error");
     } finally {
@@ -547,12 +574,6 @@ export default function TriageChatbot({
             >
               📈 Log Vitals
             </button>
-            <button 
-              className={`scanner-tab-btn ${activeScannerTab === 'saved' ? 'active' : ''}`}
-              onClick={() => setActiveScannerTab("saved")}
-            >
-              📁 Saved Reports
-            </button>
             {parsedReport && (
               <button 
                 className={`scanner-tab-btn ${activeScannerTab === 'structured' ? 'active' : ''}`}
@@ -656,63 +677,7 @@ export default function TriageChatbot({
             </form>
           )}
 
-          {activeScannerTab === "saved" && (
-            <div style={{ maxHeight: "300px", overflowY: "auto" }}>
-              {!patientProfile || !patientProfile.reports || patientProfile.reports.length === 0 ? (
-                <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", textAlign: "center", padding: "1rem" }}>
-                  No saved reports found. Upload a report file to get started.
-                </p>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  {patientProfile.reports.map((report) => (
-                    <div 
-                      key={report._id || report.id} 
-                      className="card-inner" 
-                      style={{ 
-                        margin: 0, 
-                        padding: "0.6rem", 
-                        display: "flex", 
-                        justifyContent: "space-between", 
-                        alignItems: "center",
-                        cursor: "pointer",
-                        border: "1px solid var(--border-color)",
-                        borderRadius: "4px"
-                      }}
-                      onClick={() => {
-                        setParsedReport(report);
-                        setActiveScannerTab("structured");
-                        
-                        // Populate summaries for translator helper compatibility
-                        const summaryText = `Diagnosed conditions: ${report.diagnosed_conditions?.join(", ") || "None"}. Prescriptions: ${report.prescribed_medications?.map(m => m.name).join(", ") || "None"}.`;
-                        setEnglishSummary(summaryText);
-                        setHindiSummary("");
-                        triggerToast(`Loaded report: ${report.name}`, "info");
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0, paddingRight: "0.5rem" }}>
-                        <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-main)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          📄 {report.name}
-                        </div>
-                        <div style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>
-                          {new Date(report.uploadedAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <button 
-                        className="btn btn-secondary" 
-                        style={{ padding: "4px 8px", fontSize: "0.7rem", backgroundColor: "#ef4444", color: "#fff" }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleReportDelete(report._id || report.id);
-                        }}
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+
 
           {activeScannerTab === "structured" && parsedReport && (
             <div style={{ maxHeight: "300px", overflowY: "auto" }}>
@@ -777,6 +742,15 @@ export default function TriageChatbot({
                   </table>
                 </div>
               )}
+
+              {/* Explicit save button to save parsed reports on demand */}
+              <button 
+                className="btn btn-patient btn-block mt-3"
+                onClick={handleSaveReportToProfile}
+                disabled={isReportSaving}
+              >
+                {isReportSaving ? "Saving report..." : "💾 Save Report to Profile"}
+              </button>
             </div>
           )}
         </div>

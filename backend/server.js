@@ -2141,10 +2141,10 @@ app.post("/api/patient/parse-report", verifyToken, upload.single("reportFile"), 
       }
     }
 
-    // Save parsed report details to the database under the patient's record
-    await saveReportToPatientProfile(req.user.id, parsedJson, req.file ? req.file.originalname : null);
-
-    res.json(parsedJson);
+    res.json({
+      ...parsedJson,
+      _fileName: req.file ? req.file.originalname : "Manual OCR Text"
+    });
   } catch (error) {
     console.error(error);
     if (error.message && (error.message.includes("quota") || error.message.includes("429") || error.message.includes("RESOURCE_EXHAUSTED"))) {
@@ -2179,11 +2179,26 @@ app.post("/api/patient/parse-report", verifyToken, upload.single("reportFile"), 
         _quotaNotice: true
       };
 
-      // Save fallback report details to database under patient's record
-      await saveReportToPatientProfile(req.user.id, fallbackData, req.file ? req.file.originalname : null);
-
-      return res.json(fallbackData);
+      return res.json({
+        ...fallbackData,
+        _fileName: req.file ? req.file.originalname : "Manual OCR Text"
+      });
     }
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST Explicitly Save Scanned Report
+app.post("/api/patient/reports", verifyToken, async (req, res) => {
+  try {
+    const { reportName, reportData } = req.body;
+    if (!reportName || !reportData) {
+      return res.status(400).json({ error: "Missing reportName or reportData." });
+    }
+
+    await saveReportToPatientProfile(req.user.id, reportData, reportName);
+    res.json({ success: true });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
