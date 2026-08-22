@@ -2021,6 +2021,46 @@ If your symptoms are severe (e.g., chest pain, shortness of breath, sudden numbn
   }
 });
 
+// Helper to save parsed report to the patient's database record under a report name
+const saveReportToPatientProfile = async (userId, parsedData, originalFilename) => {
+  try {
+    const patient = await Patient.findOne({ userId });
+    if (patient) {
+      const dateStr = new Date().toLocaleDateString();
+      const name = originalFilename || `Manual Entry - ${dateStr}`;
+      
+      const conditionsStr = parsedData.diagnosed_conditions?.join(", ") || "None";
+      const medsStr = parsedData.prescribed_medications?.map(m => `${m.name} (${m.dosage || ""})`).join(", ") || "None";
+      const labsStr = parsedData.abnormal_lab_markers?.map(l => `${l.test_name}: ${l.value} (${l.status})`).join(", ") || "None";
+
+      const newReportEntry = `\n\n[Report: ${name}]\n• Diagnosed Conditions: ${conditionsStr}\n• Prescribed Medications: ${medsStr}\n• Abnormal Lab Markers: ${labsStr}`;
+      
+      // Update patient profile reportSummary
+      patient.reportSummary = (patient.reportSummary ? patient.reportSummary : "") + newReportEntry;
+      await patient.save();
+
+      // Keep user document medicalHistory in sync
+      const userDoc = await User.findById(userId);
+      if (userDoc) {
+        userDoc.medicalHistory = (userDoc.medicalHistory ? userDoc.medicalHistory : "") + newReportEntry;
+        await userDoc.save();
+      }
+
+      // Update local db_fallback if offline mode is active
+      if (dbFallback) {
+        const data = JSON.parse(fs.readFileSync(dbJsonPath, "utf-8"));
+        const localPat = data.patients.find(p => p.userId === userId);
+        if (localPat) {
+          localPat.reportSummary = (localPat.reportSummary ? localPat.reportSummary : "") + newReportEntry;
+          fs.writeFileSync(dbJsonPath, JSON.stringify(data, null, 2), "utf-8");
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Failed to save report to patient profile:", err.message);
+  }
+};
+
 // 4. Report Data Extraction (OCR Post-Processor) API
 app.post("/api/patient/parse-report", verifyToken, upload.single("reportFile"), async (req, res) => {
   try {
@@ -2090,11 +2130,14 @@ app.post("/api/patient/parse-report", verifyToken, upload.single("reportFile"), 
       }
     }
 
+    // Save parsed report details to the database under the patient's record
+    await saveReportToPatientProfile(req.user.id, parsedJson, req.file ? req.file.originalname : null);
+
     res.json(parsedJson);
   } catch (error) {
     console.error(error);
     if (error.message && (error.message.includes("quota") || error.message.includes("429") || error.message.includes("RESOURCE_EXHAUSTED"))) {
-      return res.json({
+      const fallbackData = {
         diagnosed_conditions: ["Diabetes Mellitus Type 2", "Essential Hypertension"],
         prescribed_medications: [
           {
@@ -2123,7 +2166,12 @@ app.post("/api/patient/parse-report", verifyToken, upload.single("reportFile"), 
           }
         ],
         _quotaNotice: true
-      });
+      };
+
+      // Save fallback report details to database under patient's record
+      await saveReportToPatientProfile(req.user.id, fallbackData, req.file ? req.file.originalname : null);
+
+      return res.json(fallbackData);
     }
     res.status(500).json({ error: error.message });
   }

@@ -245,6 +245,9 @@ export default function TriageChatbot({
       setEnglishSummary(summaryText);
       setHindiSummary(""); // Reset translation until clicked
       triggerToast("Lab report structured successfully!", "success");
+      if (fetchPatientProfile && user) {
+        fetchPatientProfile(user.id);
+      }
     } catch (err) {
       triggerToast("Parsing failed: " + err.message, "error");
     } finally {
@@ -278,6 +281,9 @@ export default function TriageChatbot({
       setEnglishSummary(summaryText);
       setHindiSummary("");
       triggerToast("OCR file processed and structured!", "success");
+      if (fetchPatientProfile && user) {
+        fetchPatientProfile(user.id);
+      }
     } catch (err) {
       triggerToast(err.message, "error");
     } finally {
