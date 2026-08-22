@@ -2023,53 +2023,73 @@ If your symptoms are severe (e.g., chest pain, shortness of breath, sudden numbn
 
 // Helper to save parsed report to the patient's database record under a report name
 const saveReportToPatientProfile = async (userId, parsedData, originalFilename) => {
-  try {
-    const dateStr = new Date().toLocaleDateString();
-    const name = originalFilename || `Manual Entry - ${dateStr}`;
+  const dateStr = new Date().toLocaleDateString();
+  const name = originalFilename || `Manual Entry - ${dateStr}`;
+  
+  const conditionsStr = parsedData.diagnosed_conditions?.join(", ") || "None";
+  const medsStr = parsedData.prescribed_medications?.map(m => `${m.name} (${m.dosage || ""})`).join(", ") || "None";
+  const labsStr = parsedData.abnormal_lab_markers?.map(l => `${l.test_name}: ${l.value} (${l.status})`).join(", ") || "None";
+
+  const newReportEntry = `\n\n[Report: ${name}]\n• Diagnosed Conditions: ${conditionsStr}\n• Prescribed Medications: ${medsStr}\n• Abnormal Lab Markers: ${labsStr}`;
+
+  // Handle local database fallback file updates first to bypass disconnected MongoDB drivers
+  if (dbFallback) {
+    const reportObject = {
+      _id: `report-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      name,
+      diagnosed_conditions: parsedData.diagnosed_conditions || [],
+      prescribed_medications: parsedData.prescribed_medications || [],
+      abnormal_lab_markers: parsedData.abnormal_lab_markers || [],
+      uploadedAt: new Date().toISOString()
+    };
+
+    const data = JSON.parse(fs.readFileSync(dbJsonPath, "utf-8"));
+    const localPat = data.patients.find(p => p.userId === userId);
+    if (!localPat) {
+      throw new Error(`Local patient profile not found for userId: ${userId}`);
+    }
+    if (!localPat.reports) localPat.reports = [];
+    localPat.reports.push(reportObject);
+    localPat.reportSummary = (localPat.reportSummary ? localPat.reportSummary : "") + newReportEntry;
     
-    const conditionsStr = parsedData.diagnosed_conditions?.join(", ") || "None";
-    const medsStr = parsedData.prescribed_medications?.map(m => `${m.name} (${m.dosage || ""})`).join(", ") || "None";
-    const labsStr = parsedData.abnormal_lab_markers?.map(l => `${l.test_name}: ${l.value} (${l.status})`).join(", ") || "None";
-
-    const newReportEntry = `\n\n[Report: ${name}]\n• Diagnosed Conditions: ${conditionsStr}\n• Prescribed Medications: ${medsStr}\n• Abnormal Lab Markers: ${labsStr}`;
-
-    // Handle local database fallback file updates first to bypass disconnected MongoDB drivers
-    if (dbFallback) {
-      const data = JSON.parse(fs.readFileSync(dbJsonPath, "utf-8"));
-      const localPat = data.patients.find(p => p.userId === userId);
-      if (localPat) {
-        localPat.reportSummary = (localPat.reportSummary ? localPat.reportSummary : "") + newReportEntry;
-        
-        // Update offline user history
-        const localUser = data.users.find(u => u._id === userId);
-        if (localUser) {
-          localUser.medicalHistory = (localUser.medicalHistory ? localUser.medicalHistory : "") + newReportEntry;
-        }
-        
-        fs.writeFileSync(dbJsonPath, JSON.stringify(data, null, 2), "utf-8");
-        console.log("[DATABASE FALLBACK] Successfully saved report to local profile.");
-      }
-      return;
+    // Update offline user history
+    const localUser = data.users.find(u => u._id === userId);
+    if (localUser) {
+      localUser.medicalHistory = (localUser.medicalHistory ? localUser.medicalHistory : "") + newReportEntry;
     }
-
-    // Standard MongoDB path
-    const patient = await Patient.findOne({ userId });
-    if (patient) {
-      // Update patient profile reportSummary
-      patient.reportSummary = (patient.reportSummary ? patient.reportSummary : "") + newReportEntry;
-      await patient.save();
-
-      // Keep user document medicalHistory in sync
-      const userDoc = await User.findById(userId);
-      if (userDoc) {
-        userDoc.medicalHistory = (userDoc.medicalHistory ? userDoc.medicalHistory : "") + newReportEntry;
-        await userDoc.save();
-      }
-      console.log("[MONGODB] Successfully saved report to database profile.");
-    }
-  } catch (err) {
-    console.error("Failed to save report to patient profile:", err.message);
+    
+    fs.writeFileSync(dbJsonPath, JSON.stringify(data, null, 2), "utf-8");
+    console.log("[DATABASE FALLBACK] Successfully saved report to local profile.");
+    return true;
   }
+
+  // Standard MongoDB path
+  const patient = await Patient.findOne({ userId });
+  if (!patient) {
+    throw new Error(`Patient profile not found in MongoDB for userId: ${userId}`);
+  }
+
+  const reportObject = {
+    name,
+    diagnosed_conditions: parsedData.diagnosed_conditions || [],
+    prescribed_medications: parsedData.prescribed_medications || [],
+    abnormal_lab_markers: parsedData.abnormal_lab_markers || [],
+    uploadedAt: new Date()
+  };
+
+  if (!patient.reports) patient.reports = [];
+  patient.reports.push(reportObject);
+  patient.reportSummary = (patient.reportSummary ? patient.reportSummary : "") + newReportEntry;
+  await patient.save();
+
+  // Keep user document medicalHistory in sync
+  const userDoc = await User.findById(userId);
+  if (userDoc) {
+    userDoc.medicalHistory = (userDoc.medicalHistory ? userDoc.medicalHistory : "") + newReportEntry;
+    await userDoc.save();
+  }
+  console.log("[MONGODB] Successfully saved report to database profile.");
+  return true;
 };
 
 // 4. Report Data Extraction (OCR Post-Processor) API
