@@ -975,6 +975,7 @@ export default function App() {
                     speechPitch={speechPitch}
                     setSpeechPitch={setSpeechPitch}
                     fetchPatientProfile={fetchPatientProfile}
+                    patientProfile={patientProfile}
                   />
                 )}
                 {patientTab === "consultations" && (

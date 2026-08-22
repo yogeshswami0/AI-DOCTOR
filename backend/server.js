@@ -2234,6 +2234,34 @@ app.post("/api/patient/translate-summary", verifyToken, async (req, res) => {
   }
 });
 
+// DELETE Patient Scanned Report
+app.delete("/api/patient/reports/:reportId", verifyToken, async (req, res) => {
+  try {
+    if (dbFallback) {
+      const data = JSON.parse(fs.readFileSync(dbJsonPath, "utf-8"));
+      const localPat = data.patients.find(p => p.userId === req.user.id);
+      if (localPat && localPat.reports) {
+        localPat.reports = localPat.reports.filter(r => r._id !== req.params.reportId && r.id !== req.params.reportId);
+        fs.writeFileSync(dbJsonPath, JSON.stringify(data, null, 2), "utf-8");
+        return res.json({ success: true });
+      }
+      return res.status(404).json({ error: "Patient profile or report not found." });
+    }
+
+    const patient = await Patient.findOne({ userId: req.user.id });
+    if (!patient) {
+      return res.status(404).json({ error: "Patient profile not found." });
+    }
+    
+    patient.reports = patient.reports.filter(r => r._id.toString() !== req.params.reportId);
+    await patient.save();
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "../frontend/dist")));
   app.get("*", (req, res) => {

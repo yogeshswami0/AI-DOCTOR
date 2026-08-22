@@ -46,7 +46,32 @@ const PatientSchema = new mongoose.Schema({
   reportSummary: {
     type: String,
     default: ""
-  }
+  },
+  reports: [
+    {
+      name: { type: String, required: true },
+      diagnosed_conditions: [String],
+      prescribed_medications: [
+        {
+          name: String,
+          dosage: String,
+          frequency: String,
+          duration: String
+        }
+      ],
+      abnormal_lab_markers: [
+        {
+          test_name: String,
+          value: String,
+          status: String
+        }
+      ],
+      uploadedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }
+  ]
 }, {
   timestamps: true
 });

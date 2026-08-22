@@ -79,8 +79,10 @@ export default function TriageChatbot({
   setSpeechVolume,
   speechPitch,
   setSpeechPitch,
-  fetchPatientProfile
+  fetchPatientProfile,
+  patientProfile
 }) {
+  
   const [chatMode, setChatMode] = useState("custom"); // custom (RAG), standard
   const [patChatInput, setPatChatInput] = useState("");
   const [isPatChatLoading, setIsPatChatLoading] = useState(false);
@@ -91,7 +93,7 @@ export default function TriageChatbot({
   const [isChatFileUploading, setIsChatFileUploading] = useState(false);
   
   // Scoped OCR states
-  const [activeScannerTab, setActiveScannerTab] = useState("upload"); // upload, manual, structured, vitals
+  const [activeScannerTab, setActiveScannerTab] = useState("upload"); // upload, manual, structured, vitals, saved
   const [reportText, setReportText] = useState("");
   const [isReportParsing, setIsReportParsing] = useState(false);
   const [parsedReport, setParsedReport] = useState(null);
@@ -108,6 +110,26 @@ export default function TriageChatbot({
   // Translation summary
   const [englishSummary, setEnglishSummary] = useState("");
   const [hindiSummary, setHindiSummary] = useState("");
+
+  // Scoped Delete handler for reports history
+  const handleReportDelete = async (reportId) => {
+    if (!window.confirm("Are you sure you want to delete this report record?")) return;
+    try {
+      const res = await fetchWithAuth(`/api/patient/reports/${reportId}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        triggerToast("Report deleted successfully", "success");
+        if (fetchPatientProfile && user) fetchPatientProfile(user.id);
+        setParsedReport(null);
+      } else {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete report.");
+      }
+    } catch (err) {
+      triggerToast(err.message, "error");
+    }
+  };
   const [isTranslating, setIsTranslating] = useState(false);
 
   const patChatEndRef = useRef(null);
@@ -525,6 +547,12 @@ export default function TriageChatbot({
             >
               📈 Log Vitals
             </button>
+            <button 
+              className={`scanner-tab-btn ${activeScannerTab === 'saved' ? 'active' : ''}`}
+              onClick={() => setActiveScannerTab("saved")}
+            >
+              📁 Saved Reports
+            </button>
             {parsedReport && (
               <button 
                 className={`scanner-tab-btn ${activeScannerTab === 'structured' ? 'active' : ''}`}
@@ -626,6 +654,64 @@ export default function TriageChatbot({
                 {isVitalsSubmitting ? "Saving..." : "Log Vitals Entry"}
               </button>
             </form>
+          )}
+
+          {activeScannerTab === "saved" && (
+            <div style={{ maxHeight: "300px", overflowY: "auto" }}>
+              {!patientProfile || !patientProfile.reports || patientProfile.reports.length === 0 ? (
+                <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", textAlign: "center", padding: "1rem" }}>
+                  No saved reports found. Upload a report file to get started.
+                </p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  {patientProfile.reports.map((report) => (
+                    <div 
+                      key={report._id || report.id} 
+                      className="card-inner" 
+                      style={{ 
+                        margin: 0, 
+                        padding: "0.6rem", 
+                        display: "flex", 
+                        justifyContent: "space-between", 
+                        alignItems: "center",
+                        cursor: "pointer",
+                        border: "1px solid var(--border-color)",
+                        borderRadius: "4px"
+                      }}
+                      onClick={() => {
+                        setParsedReport(report);
+                        setActiveScannerTab("structured");
+                        
+                        // Populate summaries for translator helper compatibility
+                        const summaryText = `Diagnosed conditions: ${report.diagnosed_conditions?.join(", ") || "None"}. Prescriptions: ${report.prescribed_medications?.map(m => m.name).join(", ") || "None"}.`;
+                        setEnglishSummary(summaryText);
+                        setHindiSummary("");
+                        triggerToast(`Loaded report: ${report.name}`, "info");
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0, paddingRight: "0.5rem" }}>
+                        <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-main)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          📄 {report.name}
+                        </div>
+                        <div style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>
+                          {new Date(report.uploadedAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <button 
+                        className="btn btn-secondary" 
+                        style={{ padding: "4px 8px", fontSize: "0.7rem", backgroundColor: "#ef4444", color: "#fff" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReportDelete(report._id || report.id);
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {activeScannerTab === "structured" && parsedReport && (
