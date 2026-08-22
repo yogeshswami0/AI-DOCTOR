@@ -6,6 +6,7 @@ import DoctorDashboard from "./components/DoctorDashboard/DoctorDashboard";
 import TriageChatbot from "./components/TriageChatbot/TriageChatbot";
 import Consultations from "./components/Consultations/Consultations";
 import MedicationScheduler from "./components/MedicationScheduler/MedicationScheduler";
+import PatientReports from "./components/PatientReports/PatientReports";
 import "./App.css";
 
 export default function App() {
@@ -1001,6 +1002,15 @@ export default function App() {
                     handleAddMedication={handleAddMedication}
                     handleToggleMedicationDose={handleToggleMedicationDose}
                     handleDeleteMedication={handleDeleteMedication}
+                  />
+                )}
+                {patientTab === "reports" && (
+                  <PatientReports 
+                    patientProfile={patientProfile}
+                    fetchPatientProfile={fetchPatientProfile}
+                    user={user}
+                    fetchWithAuth={fetchWithAuth}
+                    triggerToast={triggerToast}
                   />
                 )}
               </>

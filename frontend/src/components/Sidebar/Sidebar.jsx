@@ -263,52 +263,12 @@ export default function Sidebar({
                 >
                   💊 Medication Alarm
                 </button>
-
-                <div style={{ marginTop: "1.25rem", padding: "0 0.5rem" }}>
-                  <div style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "0.5rem", letterSpacing: "0.5px" }}>
-                    📁 Saved OCR Reports
-                  </div>
-                  {!patientProfile || !patientProfile.reports || patientProfile.reports.length === 0 ? (
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontStyle: "italic", padding: "0.2rem 0" }}>
-                      No saved reports
-                    </div>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", maxHeight: "150px", overflowY: "auto", paddingRight: "4px" }}>
-                      {patientProfile.reports.map(report => (
-                        <div 
-                          key={report._id || report.id} 
-                          className="sidebar-report-item"
-                          style={{
-                            fontSize: "0.75rem",
-                            padding: "0.4rem 0.5rem",
-                            backgroundColor: "var(--bg-main)",
-                            border: "1px solid var(--border-color)",
-                            borderRadius: "4px",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            gap: "0.25rem"
-                          }}
-                          onClick={() => setSelectedSavedReport(report)}
-                        >
-                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }} title={report.name}>
-                            📄 {report.name}
-                          </span>
-                          <button 
-                            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "0.7rem", color: "#ef4444" }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSidebarReportDelete(report._id || report.id);
-                            }}
-                          >
-                            ❌
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <button 
+                  className={`sidebar-link patient-link ${patientTab === 'reports' ? 'active' : ''}`} 
+                  onClick={() => setPatientTab("reports")}
+                >
+                  📄 Saved Reports
+                </button>
               </>
             )}
           </div>
@@ -697,104 +657,7 @@ export default function Sidebar({
         </div>
       )}
 
-      {/* Saved Report Details Modal */}
-      {selectedSavedReport && (
-        <div className="modal-backdrop">
-          <div className="modal-card" style={{ maxWidth: "600px", width: "90%" }}>
-            <div className="modal-header">
-              <h3 style={{ margin: 0 }}>📄 Saved OCR Report Details</h3>
-              <button className="btn btn-secondary" style={{ padding: "0.25rem 0.5rem" }} onClick={() => setSelectedSavedReport(null)}>✕</button>
-            </div>
-            <div className="modal-body" style={{ maxHeight: "70vh", overflowY: "auto" }}>
-              <div style={{ marginBottom: "1rem" }}>
-                <strong>Report Name:</strong> {selectedSavedReport.name}
-              </div>
-              <div style={{ marginBottom: "1rem" }}>
-                <strong>Date Uploaded:</strong> {new Date(selectedSavedReport.uploadedAt).toLocaleString()}
-              </div>
-              
-              {/* Diagnosed Conditions */}
-              {selectedSavedReport.diagnosed_conditions?.length > 0 && (
-                <div style={{ marginBottom: "1.25rem" }}>
-                  <h4 style={{ fontSize: "0.9rem", color: "var(--color-patient-primary)", marginBottom: "0.5rem" }}>Diagnosed Conditions</h4>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-                    {selectedSavedReport.diagnosed_conditions.map((c, i) => (
-                      <span key={i} className="badge badge-patient" style={{ fontSize: "0.75rem" }}>{c}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
 
-              {/* Medications */}
-              {selectedSavedReport.prescribed_medications?.length > 0 && (
-                <div style={{ marginBottom: "1.25rem" }}>
-                  <h4 style={{ fontSize: "0.9rem", color: "var(--color-patient-primary)", marginBottom: "0.5rem" }}>Prescribed Medications</h4>
-                  <table className="report-data-table" style={{ width: "100%", fontSize: "0.8rem", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr style={{ borderBottom: "1px solid var(--border-color)", textAlign: "left" }}>
-                        <th style={{ padding: "6px" }}>Medication</th>
-                        <th style={{ padding: "6px" }}>Dosage</th>
-                        <th style={{ padding: "6px" }}>Frequency</th>
-                        <th style={{ padding: "6px" }}>Duration</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedSavedReport.prescribed_medications.map((m, i) => (
-                        <tr key={i} style={{ borderBottom: "1px solid var(--border-color)" }}>
-                          <td style={{ padding: "6px", fontWeight: 600 }}>{m.name}</td>
-                          <td style={{ padding: "6px" }}>{m.dosage || "--"}</td>
-                          <td style={{ padding: "6px" }}>{m.frequency || "--"}</td>
-                          <td style={{ padding: "6px" }}>{m.duration || "--"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {/* Abnormal Labs */}
-              {selectedSavedReport.abnormal_lab_markers?.length > 0 && (
-                <div style={{ marginBottom: "1.25rem" }}>
-                  <h4 style={{ fontSize: "0.9rem", color: "var(--color-patient-primary)", marginBottom: "0.5rem" }}>Abnormal Lab Markers</h4>
-                  <table className="report-data-table" style={{ width: "100%", fontSize: "0.8rem", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr style={{ borderBottom: "1px solid var(--border-color)", textAlign: "left" }}>
-                        <th style={{ padding: "6px" }}>Test Name</th>
-                        <th style={{ padding: "6px" }}>Value</th>
-                        <th style={{ padding: "6px" }}>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedSavedReport.abnormal_lab_markers.map((l, i) => (
-                        <tr key={i} style={{ borderBottom: "1px solid var(--border-color)" }}>
-                          <td style={{ padding: "6px", fontWeight: 600 }}>{l.test_name}</td>
-                          <td style={{ padding: "6px" }}>{l.value}</td>
-                          <td style={{ padding: "6px" }}>
-                            <span className="badge badge-error" style={{ fontSize: "0.7rem", backgroundColor: "#fecaca", color: "#b91c1c", padding: "2px 6px", borderRadius: "4px" }}>
-                              {l.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button 
-                type="button" 
-                className="btn btn-secondary" 
-                style={{ backgroundColor: "#ef4444", color: "#fff", border: "none" }}
-                onClick={() => handleSidebarReportDelete(selectedSavedReport._id || selectedSavedReport.id)}
-              >
-                🗑️ Delete Record
-              </button>
-              <button type="button" className="btn btn-secondary" onClick={() => setSelectedSavedReport(null)}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
