@@ -1,5 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { safeStorage } from "./utils/safeStorage";
+import { 
+  initSocket, 
+  getSocket, 
+  disconnectSocket, 
+  joinConsultationRoom, 
+  leaveConsultationRoom,
+  emitConsultationMessage,
+  emitConsultationRequest,
+  emitAcceptConsultation,
+  emitTypingIndicator,
+  requestOnlineUsers
+} from "./services/socket";
 import AuthPortal from "./components/AuthPortal/AuthPortal";
 import Sidebar from "./components/Sidebar/Sidebar";
 import DoctorDashboard from "./components/DoctorDashboard/DoctorDashboard";
@@ -28,6 +40,11 @@ export default function App() {
   const [toasts, setToasts] = useState([]);
   const [apiKey, setApiKey] = useState(() => safeStorage.getSession("gemini_api_key") || "");
   const [dbStatus, setDbStatus] = useState({ fallbackMode: false, connectedDatabase: "Connecting..." });
+  
+  // Real-Time WebSocket Synchronization Pipeline States
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [onlineUserIds, setOnlineUserIds] = useState(new Set());
+  const [activeTypingUsers, setActiveTypingUsers] = useState({}); // { [chatId]: userName }
   
   // Tab Routing
   const [doctorTab, setDoctorTab] = useState("vitals"); // vitals, directChats
@@ -273,23 +290,163 @@ export default function App() {
     }
   };
 
-  // Poll for consultation updates every 5 seconds
+  // ==========================================================================
+  // Full-Duplex WebSockets (Socket.io) Real-Time Synchronization Pipeline
+  // Replaces legacy 5-second synchronous HTTP polling
+  // ==========================================================================
   useEffect(() => {
-    if (!user) return;
-    const interval = setInterval(() => {
-      if (user.role === "patient" && activeConsultation) {
-        refreshActiveConsultation(activeConsultation._id);
-      } else if (user.role === "doctor" && selectedDocConsult) {
-        refreshActiveConsultation(selectedDocConsult._id);
+    if (!user) {
+      disconnectSocket();
+      setSocketConnected(false);
+      return;
+    }
+
+    const token = safeStorage.getLocal("ai_doctor_token");
+    const socket = initSocket(user, token);
+
+    const onConnect = () => {
+      setSocketConnected(true);
+      // Query currently connected online users
+      requestOnlineUsers((users) => {
+        if (Array.isArray(users)) {
+          setOnlineUserIds(new Set(users));
+        }
+      });
+    };
+
+    const onDisconnect = () => {
+      setSocketConnected(false);
+    };
+
+    const onUserStatus = (data) => {
+      if (data.onlineUsers && Array.isArray(data.onlineUsers)) {
+        setOnlineUserIds(new Set(data.onlineUsers));
+      } else if (data.userId) {
+        setOnlineUserIds(prev => {
+          const next = new Set(prev);
+          if (data.status === "online") next.add(data.userId);
+          else next.delete(data.userId);
+          return next;
+        });
       }
-      
-      // Keep notifications sidebar fresh for doctors
-      if (user.role === "doctor") {
+    };
+
+    // Full-duplex real-time new message event (text, media, documents)
+    const onNewMessage = ({ chatId, message, consultation }) => {
+      // Update active consultation if patient is currently viewing it
+      setActiveConsultation(prev => {
+        if (prev && prev._id === chatId) {
+          const exists = prev.messages.some(m => (m._id && m._id === message._id) || (m.timestamp === message.timestamp && m.content === message.content));
+          if (exists) return prev;
+          return {
+            ...prev,
+            messages: [...prev.messages, message]
+          };
+        }
+        return prev;
+      });
+
+      // Update active consultation if doctor is currently viewing it
+      setSelectedDocConsult(prev => {
+        if (prev && prev._id === chatId) {
+          const exists = prev.messages.some(m => (m._id && m._id === message._id) || (m.timestamp === message.timestamp && m.content === message.content));
+          if (exists) return prev;
+          return {
+            ...prev,
+            messages: [...prev.messages, message]
+          };
+        }
+        return prev;
+      });
+
+      // Synchronize consultations lists with latest message preview
+      setPatientConsults(prev => prev.map(c => c._id === chatId ? (consultation || { ...c, messages: [...c.messages, message] }) : c));
+      setDoctorConsults(prev => prev.map(c => c._id === chatId ? (consultation || { ...c, messages: [...c.messages, message] }) : c));
+    };
+
+    // Real-time notification for messages sent when not currently viewing that chat
+    const onNotification = (notif) => {
+      const isViewingChat = (user.role === "patient" && activeConsultation?._id === notif.chatId) ||
+                            (user.role === "doctor" && selectedDocConsult?._id === notif.chatId);
+      if (!isViewingChat) {
+        const preview = notif.fileName ? `📎 Shared ${notif.fileType || 'file'}: ${notif.fileName}` : notif.content;
+        triggerToast(`💬 ${notif.senderName}: ${preview.substring(0, 45)}`, "info");
+        if (user.role === "doctor") fetchDoctorConsultations();
+        if (user.role === "patient") fetchPatientConsultations();
+      }
+    };
+
+    // Real-time consultation requested event
+    const onConsultationRequested = (consult) => {
+      if (user.role === "doctor" && consult.doctorId === user.id) {
+        triggerToast(`🔔 New consultation request from ${consult.patientName}!`, "info");
+        fetchDoctorConsultations();
+      } else if (user.role === "patient" && consult.patientId === user.id) {
+        setActiveConsultation(consult);
+        fetchPatientConsultations();
+      }
+    };
+
+    // Real-time consultation accepted event
+    const onConsultationAccepted = (consult) => {
+      if (user.role === "patient" && consult.patientId === user.id) {
+        triggerToast(`✅ Dr. ${consult.doctorName} accepted your consultation request!`, "success");
+        setActiveConsultation(consult);
+        fetchPatientConsultations();
+      } else if (user.role === "doctor" && consult.doctorId === user.id) {
+        setSelectedDocConsult(consult);
         fetchDoctorConsultations();
       }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [user, activeConsultation, selectedDocConsult]);
+    };
+
+    // Real-time typing indicators
+    const onTyping = ({ chatId, userId, userName, isTyping }) => {
+      setActiveTypingUsers(prev => {
+        if (isTyping) {
+          return { ...prev, [chatId]: userName };
+        } else {
+          const next = { ...prev };
+          delete next[chatId];
+          return next;
+        }
+      });
+    };
+
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("user:status", onUserStatus);
+    socket.on("consultation:new_message", onNewMessage);
+    socket.on("consultation:notification", onNotification);
+    socket.on("consultation:requested", onConsultationRequested);
+    socket.on("consultation:accepted", onConsultationAccepted);
+    socket.on("consultation:typing", onTyping);
+
+    if (socket.connected) {
+      onConnect();
+    }
+
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("user:status", onUserStatus);
+      socket.off("consultation:new_message", onNewMessage);
+      socket.off("consultation:notification", onNotification);
+      socket.off("consultation:requested", onConsultationRequested);
+      socket.off("consultation:accepted", onConsultationAccepted);
+      socket.off("consultation:typing", onTyping);
+    };
+  }, [user]);
+
+  // Real-time room subscription: join room when active consultation changes
+  useEffect(() => {
+    const currentChatId = user?.role === "patient" ? activeConsultation?._id : selectedDocConsult?._id;
+    if (currentChatId) {
+      joinConsultationRoom(currentChatId);
+      return () => {
+        leaveConsultationRoom(currentChatId);
+      };
+    }
+  }, [user?.role, activeConsultation?._id, selectedDocConsult?._id]);
 
   // Medication alarm trigger sound / checker loop
   useEffect(() => {
@@ -598,102 +755,165 @@ export default function App() {
     return patientConsults.find(c => c.doctorId === doctorId) || null;
   };
 
-  // Consultation message send (Patient)
+  // Consultation message send (Patient) - Full-Duplex WebSockets with HTTP Fallback
   const handlePatConsultMessageSubmit = async (messageText, fileData) => {
+    if (!activeConsultation) return;
     setIsPatConsultLoading(true);
-    try {
-      const res = await fetchWithAuth(`/api/consultations/${activeConsultation._id}/message`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          senderId: user.id,
-          senderName: user.name,
-          content: messageText || `Shared attachment: ${fileData.fileName}`,
-          fileUrl: fileData?.fileUrl || "",
-          fileName: fileData?.fileName || "",
-          fileType: fileData?.fileType || ""
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+    const payload = {
+      chatId: activeConsultation._id,
+      senderId: user.id,
+      senderName: user.name,
+      content: messageText || (fileData ? `Shared ${fileData.fileType || 'file'}: ${fileData.fileName}` : ""),
+      fileUrl: fileData?.fileUrl || "",
+      fileName: fileData?.fileName || "",
+      fileType: fileData?.fileType || "",
+      fileSize: fileData?.fileSize || ""
+    };
 
-      setActiveConsultation(data);
-      refreshActiveConsultation(data._id);
-    } catch (err) {
-      triggerToast(err.message, "error");
-    } finally {
-      setIsPatConsultLoading(false);
+    const socket = getSocket();
+    if (socket && socket.connected) {
+      emitConsultationMessage(payload, (res) => {
+        setIsPatConsultLoading(false);
+        if (res && res.error) {
+          triggerToast(res.error, "error");
+        }
+      });
+    } else {
+      try {
+        const res = await fetchWithAuth(`/api/consultations/${activeConsultation._id}/message`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        setActiveConsultation(data);
+      } catch (err) {
+        triggerToast(err.message, "error");
+      } finally {
+        setIsPatConsultLoading(false);
+      }
     }
   };
 
-  // Consultation message send (Doctor)
+  // Consultation message send (Doctor) - Full-Duplex WebSockets with HTTP Fallback
   const handleDocConsultMessageSubmit = async (messageText, fileData) => {
+    if (!selectedDocConsult) return;
     setIsDocConsultLoading(true);
-    try {
-      const res = await fetchWithAuth(`/api/consultations/${selectedDocConsult._id}/message`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          senderId: user.id,
-          senderName: user.name,
-          content: messageText || `Shared attachment: ${fileData.fileName}`,
-          fileUrl: fileData?.fileUrl || "",
-          fileName: fileData?.fileName || "",
-          fileType: fileData?.fileType || ""
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+    const payload = {
+      chatId: selectedDocConsult._id,
+      senderId: user.id,
+      senderName: user.name,
+      content: messageText || (fileData ? `Shared ${fileData.fileType || 'file'}: ${fileData.fileName}` : ""),
+      fileUrl: fileData?.fileUrl || "",
+      fileName: fileData?.fileName || "",
+      fileType: fileData?.fileType || "",
+      fileSize: fileData?.fileSize || ""
+    };
 
-      setSelectedDocConsult(data);
-      refreshActiveConsultation(data._id);
-    } catch (err) {
-      triggerToast(err.message, "error");
-    } finally {
-      setIsDocConsultLoading(false);
+    const socket = getSocket();
+    if (socket && socket.connected) {
+      emitConsultationMessage(payload, (res) => {
+        setIsDocConsultLoading(false);
+        if (res && res.error) {
+          triggerToast(res.error, "error");
+        }
+      });
+    } else {
+      try {
+        const res = await fetchWithAuth(`/api/consultations/${selectedDocConsult._id}/message`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        setSelectedDocConsult(data);
+      } catch (err) {
+        triggerToast(err.message, "error");
+      } finally {
+        setIsDocConsultLoading(false);
+      }
     }
   };
 
   const handleRequestConsultation = async () => {
     if (!selectedDoctor) return;
     setIsPatConsultLoading(true);
-    try {
-      const res = await fetchWithAuth("/api/consultations/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          doctorId: selectedDoctor._id,
-          doctorName: selectedDoctor.name,
-          patientId: user.id,
-          patientName: user.name
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+    const payload = {
+      doctorId: selectedDoctor._id,
+      doctorName: selectedDoctor.name,
+      patientId: user.id,
+      patientName: user.name
+    };
 
-      setActiveConsultation(data);
-      fetchPatientConsultations();
-      triggerToast("Consultation request sent successfully!", "success");
-    } catch (err) {
-      triggerToast(err.message, "error");
-    } finally {
-      setIsPatConsultLoading(false);
+    const socket = getSocket();
+    if (socket && socket.connected) {
+      emitConsultationRequest(payload, (res) => {
+        setIsPatConsultLoading(false);
+        if (res && res.consultation) {
+          setActiveConsultation(res.consultation);
+          fetchPatientConsultations();
+          triggerToast("Consultation request sent in real-time!", "success");
+        } else if (res && res.error) {
+          triggerToast(res.error, "error");
+        }
+      });
+    } else {
+      try {
+        const res = await fetchWithAuth("/api/consultations/request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        setActiveConsultation(data);
+        fetchPatientConsultations();
+        triggerToast("Consultation request sent successfully!", "success");
+      } catch (err) {
+        triggerToast(err.message, "error");
+      } finally {
+        setIsPatConsultLoading(false);
+      }
     }
   };
 
   const handleAcceptConsultation = async (chatId) => {
-    try {
-      const res = await fetchWithAuth(`/api/consultations/${chatId}/accept`, {
-        method: "POST"
+    const socket = getSocket();
+    if (socket && socket.connected) {
+      emitAcceptConsultation(chatId, (res) => {
+        if (res && res.consultation) {
+          setSelectedDocConsult(res.consultation);
+          fetchDoctorConsultations();
+          triggerToast("Consultation request accepted instantly!", "success");
+        } else if (res && res.error) {
+          triggerToast(res.error, "error");
+        }
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+    } else {
+      try {
+        const res = await fetchWithAuth(`/api/consultations/${chatId}/accept`, {
+          method: "POST"
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
 
-      setSelectedDocConsult(data);
-      fetchDoctorConsultations();
-      triggerToast("Consultation request accepted.", "success");
-    } catch (err) {
-      triggerToast(err.message, "error");
+        setSelectedDocConsult(data);
+        fetchDoctorConsultations();
+        triggerToast("Consultation request accepted.", "success");
+      } catch (err) {
+        triggerToast(err.message, "error");
+      }
+    }
+  };
+
+  const handleSendTyping = (chatId, isTyping) => {
+    if (user && chatId) {
+      emitTypingIndicator(chatId, user.id, user.name, isTyping);
     }
   };
 
@@ -897,6 +1117,7 @@ export default function App() {
             patientTab={patientTab}
             setPatientTab={setPatientTab}
             dbStatus={dbStatus}
+            socketConnected={socketConnected}
             pendingRequests={pendingRequests}
             pendingCount={pendingCount}
             onSelectNotification={handleSelectNotification}
@@ -954,6 +1175,10 @@ export default function App() {
                     docConsultInput={docConsultInput}
                     setDocConsultInput={setDocConsultInput}
                     onDocMessageSubmit={handleDocConsultMessageSubmit}
+                    socketConnected={socketConnected}
+                    onlineUserIds={onlineUserIds}
+                    activeTypingUsers={activeTypingUsers}
+                    onSendTyping={handleSendTyping}
                     triggerToast={triggerToast}
                   />
                 )}
@@ -991,6 +1216,10 @@ export default function App() {
                     patConsultInput={patConsultInput}
                     setPatConsultInput={setPatConsultInput}
                     onPatMessageSubmit={handlePatConsultMessageSubmit}
+                    socketConnected={socketConnected}
+                    onlineUserIds={onlineUserIds}
+                    activeTypingUsers={activeTypingUsers}
+                    onSendTyping={handleSendTyping}
                     triggerToast={triggerToast}
                   />
                 )}

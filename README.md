@@ -50,8 +50,13 @@ graph TD
 ### 🥼 Doctor Specialist Workspace
 *   **👥 Active Patient Catalog**: Visualizes patient status with dynamic risk-category colors, latest vital entries (BP & blood sugar), and medical histories.
 *   **🛡️ Gemini Clinical Risk Assessment**: Runs multi-factor risk analyses on patient reports and logs using Gemini LLMs to output comprehensive risk sheets.
-*   **💬 Live Consultation Rooms**: Review, approve, and chat directly with patients via real-time message streams.
-*   **🔔 In-App Notifications**: Alerts the specialist of new patient consultation requests.
+*   **💬 Full-Duplex Live Consultation Rooms**: Powered by real-time WebSockets (Socket.io) replacing legacy HTTP polling. Instant message exchange, dynamic typing indicators, and real-time online presence detection.
+*   **📎 Interactive Media & Document Sharing**: Drag-and-drop exchange of clinical files up to 25MB:
+    *   **Medical Scans & Images**: Interactive inline thumbnails with full-screen Lightbox zoom, rotation, and high-res view.
+    *   **PDF & Lab Reports**: Formatted document preview cards with file size indicators and in-browser viewing.
+    *   **Voice Notes & Audio Dictation**: In-chat microphone recorder and embedded audio player for voice clinical notes.
+    *   **Video Streams**: Embedded responsive video player for clinical demonstrations.
+*   **🔔 Real-Time WebSocket Notifications**: Instant push alerts for incoming consultation requests and approvals.
 
 ---
 
@@ -63,11 +68,11 @@ graph TD
 ---
 
 ## 🛠️ Technology Stack
-*   **Frontend**: React.js, Vite, Chart.js, HTML5 canvas, Vanilla CSS.
-*   **Backend**: Node.js, Express.js.
+*   **Frontend**: React.js, Vite, Socket.io-client, Chart.js, HTML5 canvas, Vanilla CSS.
+*   **Backend**: Node.js, Express.js, Socket.io (Full-Duplex WebSockets).
 *   **Database**: MongoDB (Mongoose schemas) with auto-switching local file fallback storage.
 *   **AI Engine**: Gemini Multi-Modal APIs.
-*   **Audio Core**: HTML5 Web Speech Synthesis API.
+*   **Audio Core**: HTML5 Web Speech Synthesis API & MediaRecorder Voice Notes.
 
 ---
 

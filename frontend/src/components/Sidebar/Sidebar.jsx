@@ -9,6 +9,7 @@ export default function Sidebar({
   patientTab,
   setPatientTab,
   dbStatus,
+  socketConnected = false,
   pendingRequests,
   pendingCount,
   onSelectNotification,
@@ -276,10 +277,15 @@ export default function Sidebar({
 
         {/* Sidebar Footer Controls */}
         <div className="sidebar-footer">
-          {/* Connection Indicator */}
+          {/* Connection Indicators */}
           <div className="conn-indicator" title={dbStatus.connectedDatabase}>
             <span className={`conn-dot ${dbStatus.fallbackMode ? 'conn-fallback' : 'conn-mongo'}`}></span>
             <span style={{ fontSize: "0.75rem" }}>{dbStatus.fallbackMode ? 'Local JSON DB' : 'MongoDB Connected'}</span>
+          </div>
+
+          <div className="conn-indicator" title={socketConnected ? "Full-Duplex WebSockets (Socket.io) Active" : "Connecting to WebSocket server..."} style={{ marginTop: "4px" }}>
+            <span className="conn-dot" style={{ backgroundColor: socketConnected ? "#10b981" : "#f59e0b", boxShadow: socketConnected ? "0 0 6px #10b981" : "none" }}></span>
+            <span style={{ fontSize: "0.75rem" }}>{socketConnected ? "WebSocket: Live Sync" : "WebSocket: Offline"}</span>
           </div>
 
           {/* Doctor Consultations dropdown */}

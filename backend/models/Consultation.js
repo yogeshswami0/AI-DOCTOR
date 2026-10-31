@@ -26,6 +26,10 @@ const ConsultMessageSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  fileSize: {
+    type: String,
+    default: ""
+  },
   timestamp: {
     type: Date,
     default: Date.now
