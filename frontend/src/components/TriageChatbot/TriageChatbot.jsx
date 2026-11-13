@@ -551,9 +551,14 @@ export default function TriageChatbot({
       <div className="workspace-right-sidebar" style={{ minHeight: 0 }}>
         {/* OCR Scanner */}
         <div className="card ocr-scanner-card">
-          <h3 style={{ fontFamily: "var(--font-family-display)", fontSize: "1.1rem", marginBottom: "1rem" }}>
-            📂 Medical Report OCR Scanner
-          </h3>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+            <h3 style={{ fontFamily: "var(--font-family-display)", fontSize: "1.05rem", margin: 0 }}>
+              📂 Medical Report OCR Scanner
+            </h3>
+            <span style={{ fontSize: "0.65rem", padding: "2px 8px", borderRadius: "12px", background: "rgba(16, 185, 129, 0.15)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.3)", fontWeight: 600 }}>
+              🛡️ Local (Zero APIs)
+            </span>
+          </div>
           
           <div className="scanner-tabs">
             <button 
@@ -681,6 +686,12 @@ export default function TriageChatbot({
 
           {activeScannerTab === "structured" && parsedReport && (
             <div style={{ maxHeight: "300px", overflowY: "auto" }}>
+              {parsedReport._engine && (
+                <div style={{ fontSize: "0.68rem", color: "#10b981", background: "rgba(16, 185, 129, 0.1)", padding: "4px 8px", borderRadius: "4px", marginBottom: "8px", border: "1px solid rgba(16, 185, 129, 0.25)" }}>
+                  ✓ {parsedReport._engine}
+                </div>
+              )}
+
               {/* Diagnosed Conditions */}
               {parsedReport.diagnosed_conditions?.length > 0 && (
                 <div style={{ marginBottom: "1rem" }}>

@@ -16,9 +16,10 @@ graph TD
 
     %% Patient nodes
     P1[Patient Registration & baseline Vitals] --> P2[Empathetic AI Triage Chatbot]
-    P1 --> P3[Multimodal Report Scanner / OCR]
-    P3 --> P4[JSON Data Extraction]
-    P4 --> P5[Bilingual Audio Summaries - Voice Synthesis]
+    P1 --> P3[Local Multimodal Report Scanner]
+    P3 --> P3_OCR[Local Tesseract.js OCR Engine - 100% Offline]
+    P3_OCR --> P4[Local Clinical Rule-Based NLP Extraction]
+    P4 --> P5[Local Bilingual Audio Summaries - Voice Synthesis]
     
     %% Doctor nodes
     D1[Specialist Login & Credentials Verification] --> D2[Active Patients Dashboard]
@@ -31,7 +32,7 @@ graph TD
     D4 -.-> DB
 
     %% Apply styles
-    class P1,P2,P3,P4,P5 patient;
+    class P1,P2,P3,P3_OCR,P4,P5 patient;
     class D1,D2,D3,D4 doctor;
     class P2,D3 ai;
     class DB db;
@@ -43,8 +44,14 @@ graph TD
 
 ### 🩺 Patient Workspace
 *   **🏥 Sympathetic Triage Bot**: A conversational interface that assesses patient symptoms in real-time, displaying dynamic color-coded urgency classifications (Low, Medium, or Emergency High).
-*   **📑 Multimodal Lab Report Scanner**: Upload prescription images (PNG, JPG) or paste OCR text. The AI extracts structured medical JSON variables, including diagnosed conditions, medications, dosages, and abnormal lab indicators.
-*   **🔊 Bilingual Voice Translator & Synthesis**: Instantly compiles complex report details into plain English and Hindi summaries. Includes interactive speed rates and dynamic audio playbacks.
+*   **📑 Local Zero-API Lab Report Scanner & OCR**:
+    *   **100% On-Device / In-Process OCR**: Recognizes text from prescription & lab report scans (PNG, JPG, JPEG) using local `Tesseract.js` paired with a pre-bundled fast English neural model (`eng.traineddata`). Zero external OCR APIs (No Google Cloud Vision, No Gemini Vision, No third-party network calls).
+    *   **Local Clinical Rule-Based NLP Parser**: Extracts structured medical entities directly in Node.js:
+        *   **Diagnosed Conditions**: Pattern-matched against 30+ canonical clinical conditions & ICD-aligned disease registries.
+        *   **Prescribed Medications**: Detects 80+ common generic and branded pharmaceuticals with automated regex extraction of dosages (e.g., `500 mg`, `10 ml`), frequency patterns (`1-0-1`, `BID`, `TID`, `OD`, `at bedtime`), and course durations.
+        *   **Abnormal Lab Markers**: Detects 17+ essential metabolic & biochemical markers (Fasting/Postprandial Blood Glucose, HbA1c, Lipid Profile, Creatinine, Urea, Uric Acid, Liver AST/ALT, Blood Pressure, Hemoglobin, etc.) and benchmarks them against standard clinical normal ranges to identify critical highs and lows.
+    *   **Airgapped Privacy**: Sensitive patient diagnostic documents never leave the local server boundary.
+*   **🔊 Local Bilingual Voice Translator & Synthesis**: Instantly compiles complex report details into plain English and fluent Hindi summaries locally without external LLM or translation APIs. Includes interactive speed rates and dynamic audio playbacks.
 *   **📈 Demographics & Vitals Timeline**: Manage profiles with baseline details and add monthly logs to generate real-time vitals graphs dynamically inside the user panel.
 
 ### 🥼 Doctor Specialist Workspace
@@ -71,7 +78,8 @@ graph TD
 *   **Frontend**: React.js, Vite, Socket.io-client, Chart.js, HTML5 canvas, Vanilla CSS.
 *   **Backend**: Node.js, Express.js, Socket.io (Full-Duplex WebSockets).
 *   **Database**: MongoDB (Mongoose schemas) with auto-switching local file fallback storage.
-*   **AI Engine**: Gemini Multi-Modal APIs.
+*   **Local OCR & Medical NLP**: Tesseract.js (^5.1.1) with pre-bundled offline `eng.traineddata`, regex & clinical threshold NLP parser (zero external API dependencies).
+*   **AI Engine**: Gemini Multi-Modal APIs (Triage conversation & Doctor risk analysis).
 *   **Audio Core**: HTML5 Web Speech Synthesis API & MediaRecorder Voice Notes.
 
 ---

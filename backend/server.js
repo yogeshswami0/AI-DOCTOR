@@ -26,6 +26,7 @@ import Chat from "./models/Chat.js";
 import User from "./models/User.js";
 import Consultation from "./models/Consultation.js";
 import Medication from "./models/Medication.js";
+import { performLocalOCR, extractStructuredReportData, generateLocalBilingualSummary } from "./utils/localReportParser.js";
 
 dotenv.config({ 
   path: path.join(path.dirname(fileURLToPath(import.meta.url)), ".env") 
@@ -2191,118 +2192,42 @@ const saveReportToPatientProfile = async (userId, parsedData, originalFilename) 
   return true;
 };
 
-// 4. Report Data Extraction (OCR Post-Processor) API
+// 4. Report Data Extraction (Zero External API OCR & Clinical Parser)
 app.post("/api/patient/parse-report", verifyToken, upload.single("reportFile"), async (req, res) => {
   try {
-    const { reportText } = req.body;
-    const ai = getAIClient(req);
+    let rawText = (req.body.reportText || "").trim();
+    let recognizedText = "";
 
-    const systemInstruction = `You are a Medical Document Parsing AI. Your job is to clean, extract, and structure raw, messy text scanned from a medical lab report or prescription into a clean JSON format.
-
-    Analyze the raw text and extract the following fields exactly:
-    {
-      "diagnosed_conditions": ["List of suspected or confirmed conditions found"],
-      "prescribed_medications": [
-        {
-          "name": "Name of the drug",
-          "dosage": "e.g., 500mg",
-          "frequency": "e.g., Twice a day, after meals",
-          "duration": "e.g., 5 days"
-        }
-      ],
-      "abnormal_lab_markers": [
-        {
-          "test_name": "e.g., HbA1c",
-          "value": "e.g., 7.5%",
-          "status": "High/Low/Normal"
-        }
-      ]
-    }
-
-    Rules:
-    1. Output ONLY valid, parsable JSON. Do not write introductory or concluding prose.
-    2. If a field cannot be found in the text, return it as an empty array [].`;
-
-    let contents = [];
-
+    // If an image file was uploaded, run Local Tesseract OCR (Zero External APIs)
     if (req.file) {
-      contents.push({
-        inlineData: {
-          data: req.file.buffer.toString("base64"),
-          mimeType: req.file.mimetype
+      console.log(`[LOCAL OCR] Processing uploaded image: ${req.file.originalname} (${req.file.size} bytes) via offline Tesseract engine...`);
+      try {
+        recognizedText = await performLocalOCR(req.file.buffer);
+        console.log(`[LOCAL OCR] Successfully extracted ${recognizedText.length} characters from image.`);
+        rawText = recognizedText || rawText;
+      } catch (ocrErr) {
+        console.warn("[LOCAL OCR Warning]:", ocrErr.message);
+        if (!rawText) {
+          throw new Error(`Local OCR engine could not process image: ${ocrErr.message}`);
         }
-      });
-      contents.push("Parse this uploaded medical report or prescription document image and extract the structured data.");
-    } else if (reportText) {
-      contents.push(`Parse this raw report text:\n\n${reportText}`);
-    } else {
-      return res.status(400).json({ error: "Please provide either reportText or upload a reportFile." });
-    }
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents,
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json"
-      }
-    });
-
-    let parsedJson;
-    try {
-      parsedJson = JSON.parse(response.text.trim());
-    } catch (e) {
-      const jsonMatch = response.text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsedJson = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("Failed to parse response as JSON: " + response.text);
       }
     }
+
+    if (!rawText || rawText.trim() === "") {
+      return res.status(400).json({ error: "No readable medical text found. Please upload a clear image or paste report text." });
+    }
+
+    // Run Local Clinical Entity Extraction & Structuring Engine (Zero External APIs)
+    const parsedData = extractStructuredReportData(rawText);
 
     res.json({
-      ...parsedJson,
-      _fileName: req.file ? req.file.originalname : "Manual OCR Text"
+      ...parsedData,
+      _fileName: req.file ? req.file.originalname : "Manual Clinical Text",
+      _rawText: rawText,
+      _engine: "Local Zero-API Engine (Tesseract.js & Clinical Rule NLP)"
     });
   } catch (error) {
-    console.error(error);
-    if (error.message && (error.message.includes("quota") || error.message.includes("429") || error.message.includes("RESOURCE_EXHAUSTED"))) {
-      const fallbackData = {
-        diagnosed_conditions: ["Diabetes Mellitus Type 2", "Essential Hypertension"],
-        prescribed_medications: [
-          {
-            name: "Metformin",
-            dosage: "500mg",
-            frequency: "Twice daily, with meals",
-            duration: "Chronic / 30 days"
-          },
-          {
-            name: "Lisinopril",
-            dosage: "10mg",
-            frequency: "Once daily, in the morning",
-            duration: "Chronic / 30 days"
-          }
-        ],
-        abnormal_lab_markers: [
-          {
-            test_name: "Fasting Blood Glucose",
-            value: "145 mg/dL",
-            status: "High"
-          },
-          {
-            test_name: "HbA1c",
-            value: "7.2%",
-            status: "High"
-          }
-        ],
-        _quotaNotice: true
-      };
-
-      return res.json({
-        ...fallbackData,
-        _fileName: req.file ? req.file.originalname : "Manual OCR Text"
-      });
-    }
+    console.error("[LOCAL PARSER ERROR]:", error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -2322,48 +2247,19 @@ app.post("/api/patient/reports", verifyToken, async (req, res) => {
   }
 });
 
-// 5. Report Translation & Audio Summarizer API
+// 5. Report Translation & Audio Summarizer API (Zero External APIs)
 app.post("/api/patient/translate-summary", verifyToken, async (req, res) => {
   try {
     const { reportData } = req.body;
-    const ai = getAIClient(req);
-
-    const systemInstruction = `You are a bilingual Medical Translator and Patient Educator. Your task is to translate complex medical report data into simplified summaries that a layperson can easily understand.
-
-    Generate two distinct sections in your response:
-
-    --- ENGLISH SUMMARY ---
-    [Provide a 3-bullet-point summary of what the report means, what the main issue is, and what medicines were prescribed.]
-
-    --- HINDI SUMMARY (हिंदी सारांश) ---
-    [Provide the exact same 3-bullet-point summary translated into fluent, easy-to-read Hindi text, optimized for Text-to-Speech audio conversion.]
-
-    Rules: Keep sentences short and clear so the web speech synthesizer can read them aloud naturally without robotic pauses.`;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `Summarize this medical report JSON data: ${JSON.stringify(reportData)}`,
-      config: {
-        systemInstruction
-      }
-    });
-
-    res.json({ summary: response.text });
-  } catch (error) {
-    console.error(error);
-    if (error.message && (error.message.includes("quota") || error.message.includes("429") || error.message.includes("RESOURCE_EXHAUSTED"))) {
-      return res.json({
-        summary: `--- ENGLISH SUMMARY ---
-• The report indicates a diagnosis of Diabetes Mellitus Type 2 and Hypertension.
-• Fasting Blood Glucose is elevated at 145 mg/dL with an HbA1c of 7.2%.
-• Prescribed medications are Metformin (500mg, twice daily) and Lisinopril (10mg, once daily).
-
---- HINDI SUMMARY (हिंदी सारांश) ---
-• रिपोर्ट टाइप 2 मधुमेह (डायबिटीज) और उच्च रक्तचाप (हाइपरटेंशन) के निदान का संकेत देती है।
-• खाली पेट रक्त शर्करा 145 मिलीग्राम/डीएल के साथ एचबीए1सी 7.2% पर बढ़ा हुआ है।
-• निर्धारित दवाएं मेटफॉर्मिन (500 मिलीग्राम, दिन में दो बार) और लिसिनोप्रिल (10 मिलीग्राम, दिन में एक बार) हैं।`
-      });
+    if (!reportData) {
+      return res.status(400).json({ error: "Missing reportData for summary generation." });
     }
+
+    // Generate local bilingual summary (English & Hindi) completely offline
+    const summary = generateLocalBilingualSummary(reportData);
+    res.json({ summary });
+  } catch (error) {
+    console.error("[LOCAL TRANSLATOR ERROR]:", error.message);
     res.status(500).json({ error: error.message });
   }
 });
