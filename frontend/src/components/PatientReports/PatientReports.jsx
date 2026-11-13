@@ -49,7 +49,7 @@ export default function PatientReports({
 
           <div style={{ borderBottom: "1px solid var(--border-color)", paddingBottom: "1rem", marginBottom: "1.5rem" }}>
             <h2 style={{ fontFamily: "var(--font-family-display)", fontSize: "1.4rem", margin: "0 0 0.5rem 0", color: "var(--text-main)" }}>
-              📄 {selectedReport.name}
+              📋 {selectedReport.name}
             </h2>
             <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
               Uploaded on: {new Date(selectedReport.uploadedAt).toLocaleString()}
@@ -160,7 +160,7 @@ export default function PatientReports({
         <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
           <div className="consultations-header" style={{ marginBottom: "1.5rem" }}>
             <h2 style={{ fontFamily: "var(--font-family-display)", fontSize: "1.3rem", margin: 0 }}>
-              📁 Saved OCR Medical Reports
+              📋 Saved Medical Reports
             </h2>
             <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: "4px 0 0 0" }}>
               Archive of all your historically parsed medical document files, prescriptions, and lab test results.
@@ -170,7 +170,7 @@ export default function PatientReports({
           <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
             {reports.length === 0 ? (
               <div style={{ textAlign: "center", padding: "3rem 1rem", border: "1px dashed var(--border-color)", borderRadius: "8px" }}>
-                <span style={{ fontSize: "2.5rem", display: "block", marginBottom: "0.5rem" }}>📄</span>
+                <span style={{ fontSize: "2.5rem", display: "block", marginBottom: "0.5rem" }}>📋</span>
                 <h4 style={{ fontSize: "0.95rem", margin: "0 0 0.5rem 0" }}>No saved reports found</h4>
                 <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", maxWidth: "320px", margin: "0 auto" }}>
                   Go to the <strong>AI Triage & Scanner</strong> workspace tab to upload and save report records.
@@ -195,7 +195,7 @@ export default function PatientReports({
                         onClick={() => setSelectedReport(report)}
                       >
                         <td style={{ padding: "0.75rem", fontWeight: 600, color: "var(--color-patient-primary)" }}>
-                          📄 {report.name}
+                          📋 {report.name}
                         </td>
                         <td style={{ padding: "0.75rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
                           {new Date(report.uploadedAt).toLocaleDateString()}

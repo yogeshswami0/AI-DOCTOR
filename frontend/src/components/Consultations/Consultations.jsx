@@ -569,18 +569,12 @@ export default function Consultations({
         <div className="feature-header-box" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <div className="feature-logo-frame">
-              <span className="feature-icon">💬</span>
+              <span className="feature-icon">🩺</span>
             </div>
             <div className="feature-heading-group">
               <h1 className="feature-title">Clinical Consultations Hub</h1>
-              <p className="feature-desc">Full-duplex real-time synchronization with clinical specialists & interactive media sharing.</p>
+              <p className="feature-desc">Real-time clinical consultations with specialists & interactive media sharing.</p>
             </div>
-          </div>
-          
-          {/* Real-Time WebSocket Status Pill */}
-          <div className={`ws-status-pill ${socketConnected ? '' : 'offline'}`} title={socketConnected ? "Connected via full-duplex WebSockets" : "Connecting..."}>
-            <span className="ws-pulse-dot"></span>
-            <span>{socketConnected ? "⚡ WebSocket Live • Instant Sync" : "Connecting..."}</span>
           </div>
         </div>
         
@@ -588,7 +582,7 @@ export default function Consultations({
           {/* Left Sidebar: Doctors Directory */}
           <aside className="workspace-sidebar card">
             <div className="sidebar-header">
-              <h3>👥 Specialists Directory</h3>
+              <h3>👨‍⚕️ Specialists Directory</h3>
               <span className="badge badge-patient">{doctorDirectory.length} Registered</span>
             </div>
             
@@ -634,7 +628,7 @@ export default function Consultations({
           >
             {isDraggingOver && (
               <div className="chat-drop-overlay">
-                <span style={{ fontSize: "3.5rem" }}>📂</span>
+                <span style={{ fontSize: "3.5rem" }}>📋</span>
                 <h3 style={{ margin: 0, fontSize: "1.3rem" }}>Drop your media or documents here</h3>
                 <p style={{ margin: 0, opacity: 0.85, fontSize: "0.85rem" }}>Images, Lab Reports (PDF), Audio Dictations & Medical Files up to 25MB</p>
               </div>
@@ -672,7 +666,7 @@ export default function Consultations({
                     {/* Messages stream */}
                     <div className="chat-messages" style={{ flex: 1, minHeight: "200px" }}>
                       <div className="message system-msg">
-                        <strong>Session Status:</strong> {activeConsultation.status === 'pending' ? 'Request pending doctor approval.' : 'Connected via Full-Duplex WebSockets. Messages and media sync in real-time.'}
+                        <strong>Session Status:</strong> {activeConsultation.status === 'pending' ? 'Request pending doctor approval.' : 'Real-time clinical session active. Messages and media sync instantly.'}
                       </div>
 
                       {activeConsultation.messages.map((m, idx) => (
@@ -857,18 +851,12 @@ export default function Consultations({
       <div className="feature-header-box" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
           <div className="feature-logo-frame">
-            <span className="feature-icon">💬</span>
+            <span className="feature-icon">🩺</span>
           </div>
           <div className="feature-heading-group">
             <h1 className="feature-title">Clinical Consultations Hub</h1>
-            <p className="feature-desc">Full-duplex real-time synchronization with active patients & rich media exchange.</p>
+            <p className="feature-desc">Real-time consultation with active patients & rich media exchange.</p>
           </div>
-        </div>
-
-        {/* Real-Time WebSocket Status Pill */}
-        <div className={`ws-status-pill ${socketConnected ? '' : 'offline'}`} title={socketConnected ? "Connected via full-duplex WebSockets" : "Connecting..."}>
-          <span className="ws-pulse-dot"></span>
-          <span>{socketConnected ? "⚡ WebSocket Live • Instant Sync" : "Connecting..."}</span>
         </div>
       </div>
       
@@ -876,7 +864,7 @@ export default function Consultations({
         {/* Left Sidebar: Active consultation list */}
         <aside className="workspace-sidebar card">
           <div className="sidebar-header">
-            <h3>💬 Direct Patient Chats</h3>
+            <h3>🩺 Patient Consultations</h3>
             <span className="badge badge-doctor">{doctorConsults.length} Sessions</span>
           </div>
           
@@ -972,7 +960,7 @@ export default function Consultations({
               {/* Chats stream */}
               <div className="chat-messages" style={{ flex: 1, minHeight: "200px" }}>
                 <div className="message system-msg">
-                  <strong>Session Log:</strong> Secure encrypted consulting session with {selectedDocConsult.patientName}. Full-duplex WebSocket enabled.
+                  <strong>Session Log:</strong> Secure encrypted clinical consultation session with {selectedDocConsult.patientName}.
                 </div>
 
                 {selectedDocConsult.messages.map((m, idx) => (

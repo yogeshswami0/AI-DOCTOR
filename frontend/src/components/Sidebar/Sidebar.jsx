@@ -234,13 +234,13 @@ export default function Sidebar({
                   className={`sidebar-link ${doctorTab === 'vitals' ? 'active' : ''}`} 
                   onClick={() => setDoctorTab("vitals")}
                 >
-                  📈 Patient Vitals
+                  💓 Patient Vitals
                 </button>
                 <button 
                   className={`sidebar-link ${doctorTab === 'directChats' ? 'active' : ''}`} 
                   onClick={() => setDoctorTab("directChats")}
                 >
-                  💬 Direct Consults
+                  🩺 Direct Consults
                   {pendingCount > 0 && <span className="notification-badge" style={{ marginLeft: "auto" }}>{pendingCount}</span>}
                 </button>
               </>
@@ -250,13 +250,13 @@ export default function Sidebar({
                   className={`sidebar-link patient-link ${patientTab === 'triage' ? 'active' : ''}`} 
                   onClick={() => setPatientTab("triage")}
                 >
-                  🤖 AI Triage & Scanner
+                  🩺 AI Triage & Scanner
                 </button>
                 <button 
                   className={`sidebar-link patient-link ${patientTab === 'consultations' ? 'active' : ''}`} 
                   onClick={() => setPatientTab("consultations")}
                 >
-                  🤝 Consult a Doctor
+                  👨‍⚕️ Consult a Doctor
                 </button>
                 <button 
                   className={`sidebar-link patient-link ${patientTab === 'scheduler' ? 'active' : ''}`} 
@@ -268,7 +268,7 @@ export default function Sidebar({
                   className={`sidebar-link patient-link ${patientTab === 'reports' ? 'active' : ''}`} 
                   onClick={() => setPatientTab("reports")}
                 >
-                  📄 Saved Reports
+                  📋 Saved Reports
                 </button>
               </>
             )}
@@ -277,17 +277,6 @@ export default function Sidebar({
 
         {/* Sidebar Footer Controls */}
         <div className="sidebar-footer">
-          {/* Connection Indicators */}
-          <div className="conn-indicator" title={dbStatus.connectedDatabase}>
-            <span className={`conn-dot ${dbStatus.fallbackMode ? 'conn-fallback' : 'conn-mongo'}`}></span>
-            <span style={{ fontSize: "0.75rem" }}>{dbStatus.fallbackMode ? 'Local JSON DB' : 'MongoDB Connected'}</span>
-          </div>
-
-          <div className="conn-indicator" title={socketConnected ? "Full-Duplex WebSockets (Socket.io) Active" : "Connecting to WebSocket server..."} style={{ marginTop: "4px" }}>
-            <span className="conn-dot" style={{ backgroundColor: socketConnected ? "#10b981" : "#f59e0b", boxShadow: socketConnected ? "0 0 6px #10b981" : "none" }}></span>
-            <span style={{ fontSize: "0.75rem" }}>{socketConnected ? "WebSocket: Live Sync" : "WebSocket: Offline"}</span>
-          </div>
-
           {/* Doctor Consultations dropdown */}
           {user.role === "doctor" && pendingCount > 0 && (
             <div style={{ position: "relative" }}>

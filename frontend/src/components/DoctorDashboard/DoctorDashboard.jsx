@@ -247,7 +247,7 @@ export default function DoctorDashboard({
     if (!m.fileName) return null;
     return (
       <div className="chat-file-preview" style={{ marginTop: "8px", background: "rgba(255, 255, 255, 0.1)", border: "none", color: "#ffffff" }}>
-        <span>📂 {m.fileName}</span>
+        <span>📋 {m.fileName}</span>
         <a 
           href={m.fileUrl} 
           target="_blank" 
@@ -408,7 +408,7 @@ export default function DoctorDashboard({
                 </div>
                 <div className="patient-actions">
                   <button className="btn btn-doctor" onClick={handleGenerateRisk}>
-                    🛡️ {isRiskLoading ? "Analyzing..." : "Generate Risk Assessment"}
+                    🔬 {isRiskLoading ? "Analyzing..." : "Generate Risk Assessment"}
                   </button>
                 </div>
               </div>
@@ -453,7 +453,7 @@ export default function DoctorDashboard({
 
               {/* Log Vitals Entry Form */}
               <form onSubmit={handleLogVitals} className="card-inner" style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.5rem", borderTop: "1px solid var(--border-color)", paddingTop: "1rem" }}>
-                <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.95rem" }}>📈 Log Patient Vitals Entry</h4>
+                <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.95rem" }}>💓 Log Patient Vitals Entry</h4>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <div className="form-group" style={{ flex: 1, margin: 0 }}>
                     <label style={{ fontSize: "0.75rem", fontWeight: 600 }}>Month Label</label>
@@ -546,7 +546,7 @@ export default function DoctorDashboard({
       <aside className="workspace-chat-sidebar card" style={{ minHeight: 0, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column" }}>
         <div className="chat-header" style={{ display: "flex", flexDirection: "column", gap: "0.5rem", paddingBottom: "0.75rem", borderBottom: "1px solid var(--border-color)", marginBottom: "0.75rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-            <h3 style={{ fontSize: "1rem", margin: 0 }}>🤖 Clinical Research AI</h3>
+            <h3 style={{ fontSize: "1rem", margin: 0 }}>🔬 Clinical Research AI</h3>
             <button className="btn btn-secondary" style={{ padding: "0.25rem 0.5rem", fontSize: "0.7rem" }} onClick={() => setShowDocContext(!showDocContext)} title="Configure Clinical Context">
               ⚙️ Context
             </button>

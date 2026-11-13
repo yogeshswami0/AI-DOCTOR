@@ -424,7 +424,7 @@ export default function TriageChatbot({
     <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 90px)", padding: "1rem", gap: "0.5rem", boxSizing: "border-box" }}>
       <div className="feature-header-box" style={{ marginBottom: "0.5rem" }}>
         <div className="feature-logo-frame">
-          <span className="feature-icon">🤖</span>
+          <span className="feature-icon">🩺</span>
         </div>
         <div className="feature-heading-group">
           <h1 className="feature-title">AI Symptom Triage</h1>
@@ -465,7 +465,7 @@ export default function TriageChatbot({
         <div className="chat-messages card">
           {patientChat.length === 0 ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-muted)", padding: "2rem" }}>
-              <span style={{ fontSize: "2.5rem" }}>🤖</span>
+              <span style={{ fontSize: "2.5rem" }}>🩺</span>
               <h4>Patient AI Triage Hub</h4>
               <p style={{ fontSize: "0.8rem", textAlign: "center" }}>Describe your clinical symptoms or upload diagnostic records for instant triage support.</p>
             </div>
@@ -551,13 +551,10 @@ export default function TriageChatbot({
       <div className="workspace-right-sidebar" style={{ minHeight: 0 }}>
         {/* OCR Scanner */}
         <div className="card ocr-scanner-card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+          <div style={{ marginBottom: "0.75rem" }}>
             <h3 style={{ fontFamily: "var(--font-family-display)", fontSize: "1.05rem", margin: 0 }}>
-              📂 Medical Report OCR Scanner
+              📋 Medical Report Scanner
             </h3>
-            <span style={{ fontSize: "0.65rem", padding: "2px 8px", borderRadius: "12px", background: "rgba(16, 185, 129, 0.15)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.3)", fontWeight: 600 }}>
-              🛡️ Local (Zero APIs)
-            </span>
           </div>
           
           <div className="scanner-tabs">
@@ -577,7 +574,7 @@ export default function TriageChatbot({
               className={`scanner-tab-btn ${activeScannerTab === 'vitals' ? 'active' : ''}`}
               onClick={() => setActiveScannerTab("vitals")}
             >
-              📈 Log Vitals
+              💓 Log Vitals
             </button>
             {parsedReport && (
               <button 
@@ -686,12 +683,6 @@ export default function TriageChatbot({
 
           {activeScannerTab === "structured" && parsedReport && (
             <div style={{ maxHeight: "300px", overflowY: "auto" }}>
-              {parsedReport._engine && (
-                <div style={{ fontSize: "0.68rem", color: "#10b981", background: "rgba(16, 185, 129, 0.1)", padding: "4px 8px", borderRadius: "4px", marginBottom: "8px", border: "1px solid rgba(16, 185, 129, 0.25)" }}>
-                  ✓ {parsedReport._engine}
-                </div>
-              )}
-
               {/* Diagnosed Conditions */}
               {parsedReport.diagnosed_conditions?.length > 0 && (
                 <div style={{ marginBottom: "1rem" }}>
