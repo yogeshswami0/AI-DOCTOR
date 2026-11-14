@@ -26,7 +26,12 @@ import Chat from "./models/Chat.js";
 import User from "./models/User.js";
 import Consultation from "./models/Consultation.js";
 import Medication from "./models/Medication.js";
+import Message from "./models/Message.js";
 import { performLocalOCR, extractStructuredReportData, generateLocalBilingualSummary } from "./utils/localReportParser.js";
+import { securityHeaders, corsConfig } from "./middleware/securityHeaders.js";
+import { authRateLimiter, otpRateLimiter, aiRateLimiter, apiGeneralLimiter } from "./middleware/rateLimiter.js";
+import { verifyToken, requireRole, verifySocketAuth } from "./middleware/authGuard.js";
+import { validateFileSignature, sanitizeFilename } from "./middleware/fileValidator.js";
 
 dotenv.config({ 
   path: path.join(path.dirname(fileURLToPath(import.meta.url)), ".env") 
@@ -284,8 +289,13 @@ const io = new SocketIOServer(server, {
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "ai_doctor_secret_jwt_key_2026";
 
-app.use(cors());
-app.use(express.json());
+app.use(securityHeaders());
+app.use(corsConfig());
+app.use(express.json({ limit: "15mb" }));
+app.use(express.urlencoded({ extended: true, limit: "15mb" }));
+
+// Mount General Rate Limiting across API endpoints
+app.use("/api/", apiGeneralLimiter);
 
 // Setup Multer for image file uploads (OCR scanning in-memory)
 const storage = multer.memoryStorage();
@@ -302,7 +312,51 @@ const uploadsDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
 }
-app.use("/uploads", express.static(uploadsDir));
+
+// Secure Protected File Streaming Gateway (Guarded by verifyToken)
+const serveProtectedFile = async (req, res) => {
+  try {
+    const rawFilename = req.params.filename;
+    if (!rawFilename) {
+      return res.status(400).json({ success: false, error: "Filename is required." });
+    }
+
+    const filename = sanitizeFilename(rawFilename);
+    const targetPath = path.join(uploadsDir, filename);
+
+    // Guard against path traversal attacks
+    if (!targetPath.startsWith(uploadsDir) || !fs.existsSync(targetPath)) {
+      return res.status(404).json({ success: false, error: "Medical asset not found." });
+    }
+
+    const ext = path.extname(filename).toLowerCase();
+    let contentType = "application/octet-stream";
+    if (ext === ".pdf") contentType = "application/pdf";
+    else if (ext === ".png") contentType = "image/png";
+    else if (ext === ".jpg" || ext === ".jpeg") contentType = "image/jpeg";
+    else if (ext === ".webp") contentType = "image/webp";
+    else if (ext === ".mp3") contentType = "audio/mpeg";
+    else if (ext === ".ogg") contentType = "audio/ogg";
+    else if (ext === ".webm") contentType = "video/webm";
+    else if (ext === ".mp4") contentType = "video/mp4";
+
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "private, no-cache, no-store, must-revalidate");
+
+    const stream = fs.createReadStream(targetPath);
+    stream.on("error", () => {
+      res.status(500).json({ success: false, error: "Error streaming medical file." });
+    });
+    stream.pipe(res);
+  } catch (err) {
+    res.status(500).json({ success: false, error: "Unable to process file request." });
+  }
+};
+
+// Mount authenticated file endpoints (Both /api/files/:filename and /uploads/:filename)
+app.get("/api/files/:filename", verifyToken, serveProtectedFile);
+app.get("/uploads/:filename", verifyToken, serveProtectedFile);
 
 const chatDiskStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -318,27 +372,6 @@ const uploadChat = multer({
   storage: chatDiskStorage,
   limits: { fileSize: 25 * 1024 * 1024 } // 25MB limit for rich media & docs
 });
-
-// Middleware to verify JWT token for route protection
-const verifyToken = (req, res, next) => {
-  const authHeader = req.headers["authorization"];
-  if (!authHeader) {
-    return res.status(401).json({ error: "Access Denied. No token provided." });
-  }
-
-  const token = authHeader.split(" ")[1]; // Bearer <token>
-  if (!token) {
-    return res.status(401).json({ error: "Access Denied. Invalid token format." });
-  }
-
-  try {
-    const verified = jwt.verify(token, JWT_SECRET);
-    req.user = verified; // { id, role }
-    next();
-  } catch (error) {
-    res.status(403).json({ error: "Invalid or expired token." });
-  }
-};
 
 // RAG Keyword-based search engine
 const queryMedicalKnowledge = (queryText) => {
@@ -744,6 +777,48 @@ const DB = {
     return await Consultation.find({ doctorId });
   },
 
+  async getConsultationById(chatId) {
+    if (dbFallback) {
+      const data = JSON.parse(fs.readFileSync(dbJsonPath, "utf-8"));
+      return data.consultations.find(c => c._id === chatId) || null;
+    }
+    return await Consultation.findById(chatId);
+  },
+
+  async getConsultationSessionWithMessages(chatId) {
+    if (dbFallback) {
+      const data = JSON.parse(fs.readFileSync(dbJsonPath, "utf-8"));
+      return data.consultations.find(c => c._id === chatId) || null;
+    }
+    const consult = await Consultation.findById(chatId);
+    if (!consult) return null;
+
+    // Fetch decoupled messages from dedicated Message collection
+    try {
+      const decoupledMessages = await Message.find({ consultationId: chatId }).sort({ createdAt: 1 }).lean();
+      
+      const finalMessages = (decoupledMessages && decoupledMessages.length > 0)
+        ? decoupledMessages.map(m => ({
+            _id: m._id,
+            senderId: m.senderId,
+            senderName: m.senderName,
+            content: m.content,
+            fileUrl: m.fileUrl,
+            fileName: m.fileName,
+            fileType: m.fileType,
+            fileSize: m.fileSize,
+            timestamp: m.createdAt || m.timestamp
+          }))
+        : (consult.messages || []);
+
+      const consultObj = consult.toObject();
+      consultObj.messages = finalMessages;
+      return consultObj;
+    } catch (e) {
+      return consult;
+    }
+  },
+
   async requestConsultation(patientId, patientName, doctorId, doctorName) {
     if (dbFallback) {
       const data = JSON.parse(fs.readFileSync(dbJsonPath, "utf-8"));
@@ -784,6 +859,7 @@ const DB = {
       const data = JSON.parse(fs.readFileSync(dbJsonPath, "utf-8"));
       const consult = data.consultations.find(c => c._id === chatId);
       if (consult) {
+        if (!consult.messages) consult.messages = [];
         consult.messages.push({
           senderId,
           senderName,
@@ -800,6 +876,24 @@ const DB = {
     }
     const consult = await Consultation.findById(chatId);
     if (consult) {
+      // 1. Decoupled collection persistence (Scalable)
+      try {
+        await Message.create({
+          consultationId: chatId,
+          senderId,
+          senderName,
+          content,
+          fileUrl,
+          fileName,
+          fileType,
+          fileSize
+        });
+      } catch (msgErr) {
+        console.warn("[Message Collection Storage Notice]:", msgErr.message);
+      }
+
+      // 2. Keep backward compatibility with consultation.messages
+      if (!consult.messages) consult.messages = [];
       consult.messages.push({ senderId, senderName, content, fileUrl, fileName, fileType, fileSize });
       await consult.save();
     }
@@ -1065,7 +1159,7 @@ function getAIClient(req) {
    ========================================================================== */
 
 // Send OTP Code route
-app.post("/api/auth/send-otp", async (req, res) => {
+app.post("/api/auth/send-otp", otpRateLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) {
@@ -1114,7 +1208,7 @@ app.post("/api/auth/send-otp", async (req, res) => {
 });
 
 // Register Route
-app.post("/api/auth/register", async (req, res) => {
+app.post("/api/auth/register", authRateLimiter, async (req, res) => {
   try {
     const { name, email, password, role, otp } = req.body;
     if (!name || !email || !password || !role || !otp) {
@@ -1210,7 +1304,7 @@ app.post("/api/auth/register", async (req, res) => {
 });
 
 // Login Route
-app.post("/api/auth/login", async (req, res) => {
+app.post("/api/auth/login", authRateLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -1379,36 +1473,44 @@ app.get("/api/consultations/doctor/:doctorId", verifyToken, async (req, res) => 
   }
 });
 
-// GET Single Consultation Session by ID
+// GET Single Consultation Session by ID (Strict IDOR Protected)
 app.get("/api/consultations/session/:chatId", verifyToken, async (req, res) => {
   try {
     const { chatId } = req.params;
-    let consult;
-    if (dbFallback) {
-      const data = JSON.parse(fs.readFileSync(dbJsonPath, "utf-8"));
-      consult = data.consultations.find(c => c._id === chatId);
-    } else {
-      consult = await Consultation.findById(chatId);
-    }
+    const consult = await DB.getConsultationSessionWithMessages(chatId);
     if (!consult) {
-      return res.status(404).json({ error: "Consultation session not found." });
+      return res.status(404).json({ success: false, error: "Consultation session not found." });
     }
+
+    const patientIdStr = consult.patientId?.toString();
+    const doctorIdStr = consult.doctorId?.toString();
+
+    // IDOR Protection: Only the patient or doctor in this session can retrieve it
+    if (req.user.id !== patientIdStr && req.user.id !== doctorIdStr) {
+      return res.status(403).json({
+        success: false,
+        error: "Access Denied. You are not an authorized participant in this consultation session."
+      });
+    }
+
     res.json(consult);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // POST Initiate Consultation Request
 app.post("/api/consultations/request", verifyToken, async (req, res) => {
   try {
-    const { patientId, patientName, doctorId, doctorName } = req.body;
-    if (!patientId || !patientName || !doctorId || !doctorName) {
-      return res.status(400).json({ error: "Missing required consultation parameters." });
+    const { doctorId, doctorName } = req.body;
+    if (!doctorId || !doctorName) {
+      return res.status(400).json({ success: false, error: "Missing required doctor consultation parameters." });
     }
-    if (req.user.id !== patientId) {
-      return res.status(403).json({ error: "Access Denied. Unauthorized action." });
-    }
+
+    // Always derive patient identity from verified token, never client body
+    const patientId = req.user.id;
+    const patientName = req.user.name || req.body.patientName || "Patient";
+
     const consult = await DB.requestConsultation(patientId, patientName, doctorId, doctorName);
     
     // Real-time synchronization broadcast via WebSocket
@@ -1417,64 +1519,97 @@ app.post("/api/consultations/request", verifyToken, async (req, res) => {
 
     res.json(consult);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// POST Add message to consultation
+// POST Add message to consultation (Strict IDOR Protected & Scalable)
 app.post("/api/consultations/:chatId/message", verifyToken, async (req, res) => {
   try {
     const { chatId } = req.params;
-    const { senderId, senderName, content, fileUrl, fileName, fileType, fileSize } = req.body;
-    if (!senderId || !senderName || (!content && !fileUrl)) {
-      return res.status(400).json({ error: "Missing sender details or message content." });
+    const { content, fileUrl, fileName, fileType, fileSize } = req.body;
+    if (!content && !fileUrl) {
+      return res.status(400).json({ success: false, error: "Missing message content or attachment." });
     }
-    if (req.user.id !== senderId) {
-      return res.status(403).json({ error: "Access Denied. Unauthorized sender." });
+
+    const consult = await DB.getConsultationById(chatId);
+    if (!consult) {
+      return res.status(404).json({ success: false, error: "Consultation session not found." });
     }
-    const updated = await DB.addConsultationMessage(chatId, senderId, senderName, content, fileUrl || "", fileName || "", fileType || "", fileSize || "");
-    
-    if (updated && updated.messages && updated.messages.length > 0) {
-      const newMsg = updated.messages[updated.messages.length - 1];
-      // Full-duplex WebSocket broadcast to active consultation room
-      io.to(`consultation:${chatId}`).emit("consultation:new_message", {
-        chatId,
-        message: newMsg,
-        consultation: updated
+
+    const patientIdStr = consult.patientId?.toString();
+    const doctorIdStr = consult.doctorId?.toString();
+
+    // Verify requesting user is a legitimate participant
+    if (req.user.id !== patientIdStr && req.user.id !== doctorIdStr) {
+      return res.status(403).json({
+        success: false,
+        error: "Access Denied. You are not a participant in this consultation."
       });
+    }
 
-      // Direct in-app notification to the recipient user
-      const recipientId = (updated.patientId?.toString() === senderId.toString())
-        ? updated.doctorId?.toString()
-        : updated.patientId?.toString();
+    // Derive sender identity strictly from verified token
+    const senderId = req.user.id;
+    const senderName = req.user.name || (senderId === patientIdStr ? consult.patientName : consult.doctorName) || "User";
 
-      if (recipientId) {
-        io.to(`user:${recipientId}`).emit("consultation:notification", {
-          chatId,
-          senderId,
-          senderName,
-          content: content || `Shared file: ${fileName}`,
-          fileUrl: fileUrl || "",
-          fileName: fileName || "",
-          fileType: fileType || "",
-          fileSize: fileSize || ""
-        });
-      }
+    const updated = await DB.addConsultationMessage(chatId, senderId, senderName, content || `Shared file: ${fileName || 'attachment'}`, fileUrl || "", fileName || "", fileType || "", fileSize || "");
+    
+    const newMsg = {
+      senderId,
+      senderName,
+      content: content || `Shared file: ${fileName || 'attachment'}`,
+      fileUrl: fileUrl || "",
+      fileName: fileName || "",
+      fileType: fileType || "",
+      fileSize: fileSize || "",
+      timestamp: new Date().toISOString()
+    };
+
+    // Full-duplex WebSocket broadcast to active consultation room
+    io.to(`consultation:${chatId}`).emit("consultation:new_message", {
+      chatId,
+      message: newMsg,
+      consultation: updated
+    });
+
+    // Direct in-app notification to the recipient user
+    const recipientId = (patientIdStr === senderId) ? doctorIdStr : patientIdStr;
+    if (recipientId) {
+      io.to(`user:${recipientId}`).emit("consultation:notification", {
+        chatId,
+        senderId,
+        senderName,
+        content: content || `Shared file: ${fileName}`,
+        fileUrl: fileUrl || "",
+        fileName: fileName || "",
+        fileType: fileType || "",
+        fileSize: fileSize || ""
+      });
     }
 
     res.json(updated);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// POST Accept consultation
+// POST Accept consultation (Strict Specialist Verification)
 app.post("/api/consultations/:chatId/accept", verifyToken, async (req, res) => {
   try {
     const { chatId } = req.params;
     if (req.user.role !== "doctor") {
-      return res.status(403).json({ error: "Access Denied. Only doctors can accept requests." });
+      return res.status(403).json({ success: false, error: "Access Denied. Only doctors can accept consultation requests." });
     }
+
+    const consult = await DB.getConsultationById(chatId);
+    if (!consult) {
+      return res.status(404).json({ success: false, error: "Consultation session not found." });
+    }
+
+    if (consult.doctorId?.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, error: "Access Denied. You cannot accept a consultation assigned to another doctor." });
+    }
+
     const updated = await DB.acceptConsultation(chatId);
     
     // Real-time synchronization broadcast via WebSocket
@@ -1486,7 +1621,7 @@ app.post("/api/consultations/:chatId/accept", verifyToken, async (req, res) => {
 
     res.json(updated);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -1696,11 +1831,25 @@ app.post("/api/chats/upload", verifyToken, uploadChat.fields([{ name: "file", ma
   try {
     const file = req.files && (req.files["file"]?.[0] || req.files["chatFile"]?.[0]);
     if (!file) {
-      return res.status(400).json({ error: "No file selected." });
+      return res.status(400).json({ success: false, error: "No file selected." });
     }
-    const relativeUrl = `/uploads/${file.filename}`;
+
     const mime = (file.mimetype || "").toLowerCase();
     const ext = path.extname(file.originalname).toLowerCase();
+
+    // Cryptographic Magic Byte Signature Verification
+    const isValidSignature = validateFileSignature(file.path, mime, ext);
+    if (!isValidSignature) {
+      try { fs.unlinkSync(file.path); } catch (e) {}
+      return res.status(400).json({
+        success: false,
+        error: "File verification failed. The file content does not match the declared extension.",
+        code: "INVALID_FILE_SIGNATURE"
+      });
+    }
+
+    const sanitizedBase = sanitizeFilename(file.originalname);
+    const relativeUrl = `/api/files/${file.filename}`;
     
     let fileType = "document";
     if (mime.startsWith("image/") || [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".bmp"].includes(ext)) {
@@ -1722,15 +1871,16 @@ app.post("/api/chats/upload", verifyToken, uploadChat.fields([{ name: "file", ma
     };
 
     res.json({
+      success: true,
       fileUrl: relativeUrl,
-      fileName: file.originalname,
+      fileName: sanitizedBase,
       fileType,
       fileSize: formatBytes(file.size),
       sizeBytes: file.size,
       mimeType: file.mimetype
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -1918,7 +2068,7 @@ function mapMessagesToGeminiContents(messages, uploadsDir) {
 }
 
 // POST Doctor AI Research Assistant Chat
-app.post("/api/doctor/chat", verifyToken, async (req, res) => {
+app.post("/api/doctor/chat", aiRateLimiter, verifyToken, async (req, res) => {
   let contextItem = null;
   let mode = "standard";
   try {
@@ -2039,7 +2189,7 @@ app.post("/api/doctor/analyze-patient", verifyToken, async (req, res) => {
 });
 
 // 3. Patient General Triage Chatbot API
-app.post("/api/patient/chat", verifyToken, async (req, res) => {
+app.post("/api/patient/chat", aiRateLimiter, verifyToken, async (req, res) => {
   let contextItem = null;
   let mode = "standard";
   try {
@@ -2300,21 +2450,8 @@ app.delete("/api/patient/reports/:reportId", verifyToken, async (req, res) => {
 // In-memory mapping of active connected users: userId -> Set of socket IDs
 const onlineUsers = new Map();
 
-io.use((socket, next) => {
-  try {
-    const userId = socket.handshake.auth?.userId;
-    const name = socket.handshake.auth?.name;
-    const role = socket.handshake.auth?.role;
-
-    socket.userId = userId ? String(userId) : null;
-    socket.userName = name || "User";
-    socket.userRole = role || "guest";
-    next();
-  } catch (err) {
-    console.warn("[WebSocket Handshake Error]", err);
-    next();
-  }
-});
+// Cryptographically verify JWT token during WebSocket handshake
+io.use(verifySocketAuth);
 
 io.on("connection", (socket) => {
   const { userId, userName, userRole } = socket;
@@ -2346,10 +2483,28 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Join a consultation room
-  socket.on("consultation:join", ({ chatId }) => {
-    if (chatId) {
+  // Join a consultation room (Strict Participant Check)
+  socket.on("consultation:join", async ({ chatId }, callback) => {
+    try {
+      if (!chatId) return;
+      const consult = await DB.getConsultationById(chatId);
+      if (!consult) {
+        if (typeof callback === "function") callback({ error: "Consultation not found." });
+        return;
+      }
+      const patId = consult.patientId?.toString();
+      const docId = consult.doctorId?.toString();
+
+      if (socket.userId !== patId && socket.userId !== docId) {
+        console.warn(`[Socket Security] Unauthorized room join attempt by user ${socket.userId} on chat ${chatId}`);
+        if (typeof callback === "function") callback({ error: "Access denied. Not a participant in this consultation." });
+        return;
+      }
+
       socket.join(`consultation:${chatId}`);
+      if (typeof callback === "function") callback({ success: true });
+    } catch (err) {
+      if (typeof callback === "function") callback({ error: err.message });
     }
   });
 
@@ -2360,24 +2515,47 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Real-time typing indicators
-  socket.on("consultation:typing", ({ chatId, userId, userName, isTyping }) => {
-    if (chatId) {
+  // Real-time typing indicators (Strict Participant Check)
+  socket.on("consultation:typing", async ({ chatId, isTyping }) => {
+    try {
+      if (!chatId) return;
+      const consult = await DB.getConsultationById(chatId);
+      if (!consult) return;
+      const patId = consult.patientId?.toString();
+      const docId = consult.doctorId?.toString();
+      if (socket.userId !== patId && socket.userId !== docId) return;
+
       socket.to(`consultation:${chatId}`).emit("consultation:typing", {
         chatId,
-        userId,
-        userName,
+        userId: socket.userId,
+        userName: socket.userName,
         isTyping
       });
-    }
+    } catch (e) {}
   });
 
-  // Full-Duplex Consultation Message & Media/Document Sharing
+  // Full-Duplex Consultation Message & Media/Document Sharing (Strict IDOR & Validation)
   socket.on("consultation:message", async (data, callback) => {
     try {
-      const { chatId, senderId, senderName, content, fileUrl, fileName, fileType, fileSize } = data;
-      if (!chatId || !senderId || (!content && !fileUrl)) {
-        if (typeof callback === "function") callback({ error: "Missing message content or sender details." });
+      const { chatId, content, fileUrl, fileName, fileType, fileSize } = data;
+      if (!chatId || (!content && !fileUrl)) {
+        if (typeof callback === "function") callback({ error: "Missing message content or consultation ID." });
+        return;
+      }
+
+      const consult = await DB.getConsultationById(chatId);
+      if (!consult) {
+        if (typeof callback === "function") callback({ error: "Consultation not found." });
+        return;
+      }
+
+      const senderId = socket.userId;
+      const senderName = socket.userName;
+      const patId = consult.patientId?.toString();
+      const docId = consult.doctorId?.toString();
+
+      if (senderId !== patId && senderId !== docId) {
+        if (typeof callback === "function") callback({ error: "Access denied. Unauthorized sender." });
         return;
       }
 
@@ -2385,19 +2563,23 @@ io.on("connection", (socket) => {
         chatId,
         senderId,
         senderName,
-        content || `Shared file: ${fileName}`,
+        content || `Shared file: ${fileName || 'attachment'}`,
         fileUrl || "",
         fileName || "",
         fileType || "",
         fileSize || ""
       );
 
-      if (!updated) {
-        if (typeof callback === "function") callback({ error: "Consultation not found." });
-        return;
-      }
-
-      const newMsg = updated.messages[updated.messages.length - 1];
+      const newMsg = {
+        senderId,
+        senderName,
+        content: content || `Shared file: ${fileName || 'attachment'}`,
+        fileUrl: fileUrl || "",
+        fileName: fileName || "",
+        fileType: fileType || "",
+        fileSize: fileSize || "",
+        timestamp: new Date().toISOString()
+      };
 
       // Instant delivery to all participants in this consultation room
       io.to(`consultation:${chatId}`).emit("consultation:new_message", {
@@ -2407,10 +2589,7 @@ io.on("connection", (socket) => {
       });
 
       // Deliver instant in-app notification to the counterpart user room
-      const recipientId = (updated.patientId?.toString() === senderId.toString())
-        ? updated.doctorId?.toString()
-        : updated.patientId?.toString();
-
+      const recipientId = (patId === senderId) ? docId : patId;
       if (recipientId) {
         io.to(`user:${recipientId}`).emit("consultation:notification", {
           chatId,
@@ -2431,14 +2610,21 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Real-time Consultation Request
+  // Real-time Consultation Request (Enforces Patient Role & Identity)
   socket.on("consultation:request", async (data, callback) => {
     try {
-      const { patientId, patientName, doctorId, doctorName } = data;
-      if (!patientId || !patientName || !doctorId || !doctorName) {
-        if (typeof callback === "function") callback({ error: "Missing consultation parameters." });
+      if (socket.userRole !== "patient") {
+        if (typeof callback === "function") callback({ error: "Access denied. Only patients can initiate consultation requests." });
         return;
       }
+      const { doctorId, doctorName } = data;
+      if (!doctorId || !doctorName) {
+        if (typeof callback === "function") callback({ error: "Missing doctor consultation parameters." });
+        return;
+      }
+
+      const patientId = socket.userId;
+      const patientName = socket.userName;
 
       const consult = await DB.requestConsultation(patientId, patientName, doctorId, doctorName);
 
@@ -2453,9 +2639,23 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Real-time Consultation Acceptance
+  // Real-time Consultation Acceptance (Strict Specialist Verification)
   socket.on("consultation:accept", async ({ chatId }, callback) => {
     try {
+      if (socket.userRole !== "doctor") {
+        if (typeof callback === "function") callback({ error: "Access denied. Only doctors can accept consultations." });
+        return;
+      }
+      const consult = await DB.getConsultationById(chatId);
+      if (!consult) {
+        if (typeof callback === "function") callback({ error: "Consultation not found." });
+        return;
+      }
+      if (consult.doctorId?.toString() !== socket.userId) {
+        if (typeof callback === "function") callback({ error: "Access denied. Consultation assigned to another specialist." });
+        return;
+      }
+
       const updated = await DB.acceptConsultation(chatId);
       if (updated) {
         io.to(`consultation:${chatId}`).emit("consultation:accepted", updated);
@@ -2488,6 +2688,26 @@ io.on("connection", (socket) => {
   });
 });
 
+// Production Health Check & Diagnostic Telemetry Endpoint
+app.get("/api/health", (req, res) => {
+  const memoryUsage = process.memoryUsage();
+  res.json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    uptimeSeconds: Math.floor(process.uptime()),
+    environment: process.env.NODE_ENV || "development",
+    database: {
+      type: dbFallback ? "json_file_fallback" : "mongodb_mongoose",
+      connected: !dbFallback && mongoose.connection.readyState === 1
+    },
+    system: {
+      nodeVersion: process.version,
+      memoryRssMb: Math.round(memoryUsage.rss / (1024 * 1024)),
+      heapUsedMb: Math.round(memoryUsage.heapUsed / (1024 * 1024))
+    }
+  });
+});
+
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "../frontend/dist")));
   app.get("*", (req, res) => {
@@ -2498,3 +2718,33 @@ if (process.env.NODE_ENV === "production") {
 server.listen(PORT, () => {
   console.log(`MERN Full-Duplex WebSocket Backend running at http://localhost:${PORT}`);
 });
+
+// Graceful Process Termination Handlers
+const gracefulShutdown = (signal) => {
+  console.log(`[PROCESS] Received ${signal}. Initiating graceful shutdown...`);
+  io.close(() => {
+    console.log("[WEBSOCKET] Socket.io server closed.");
+  });
+  server.close(async () => {
+    console.log("[HTTP] Express HTTP gateway stopped.");
+    try {
+      if (mongoose.connection.readyState === 1) {
+        await mongoose.connection.close(false);
+        console.log("[DATABASE] MongoDB connection closed.");
+      }
+    } catch (e) {
+      console.warn("[DATABASE] Error during disconnection:", e.message);
+    }
+    process.exit(0);
+  });
+
+  setTimeout(() => {
+    console.error("[PROCESS] Forceful shutdown initiated after 5s timeout.");
+    process.exit(1);
+  }, 5000).unref();
+};
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+export { app, server };
