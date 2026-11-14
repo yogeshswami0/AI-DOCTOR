@@ -57,26 +57,41 @@ export function securityHeaders(options = {}) {
  * Production-ready CORS validator middleware
  */
 export function corsConfig() {
-  const allowedOrigins = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || "")
+  const isProduction = process.env.NODE_ENV === "production";
+  const rawOrigins = process.env.CORS_ORIGINS || process.env.FRONTEND_URL || "http://localhost:5173,http://localhost:5000";
+  const allowedOrigins = rawOrigins
     .split(",")
-    .map(s => s.trim())
+    .map(s => s.trim().replace(/\/$/, ""))
     .filter(Boolean);
 
   return (req, res, next) => {
     const origin = req.headers.origin;
 
-    // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
     if (!origin) {
+      // Direct server-to-server, health checks, or curl requests with no Origin header
       res.setHeader("Access-Control-Allow-Origin", "*");
-    } else if (
-      allowedOrigins.length === 0 || 
-      allowedOrigins.includes(origin) || 
-      process.env.NODE_ENV !== "production"
-    ) {
-      res.setHeader("Access-Control-Allow-Origin", origin);
+    } else {
+      const normalizedOrigin = origin.replace(/\/$/, "");
+      const isAllowed = allowedOrigins.includes(normalizedOrigin) || 
+        (!isProduction && (normalizedOrigin.includes("localhost") || normalizedOrigin.includes("127.0.0.1")));
+
+      if (isAllowed) {
+        res.setHeader("Access-Control-Allow-Origin", origin);
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+      } else if (isProduction) {
+        // Reject disallowed cross-origin requests in production
+        return res.status(403).json({
+          success: false,
+          error: "CORS policy violation: Origin not allowed",
+          code: "CORS_FORBIDDEN"
+        });
+      } else {
+        // Development fallback with warning
+        res.setHeader("Access-Control-Allow-Origin", origin);
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+      }
     }
 
-    res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader(
       "Access-Control-Allow-Methods",
       "GET, POST, PUT, DELETE, PATCH, OPTIONS"

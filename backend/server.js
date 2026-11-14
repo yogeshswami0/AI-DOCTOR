@@ -30,7 +30,7 @@ import Message from "./models/Message.js";
 import { performLocalOCR, extractStructuredReportData, generateLocalBilingualSummary } from "./utils/localReportParser.js";
 import { securityHeaders, corsConfig } from "./middleware/securityHeaders.js";
 import { authRateLimiter, otpRateLimiter, aiRateLimiter, apiGeneralLimiter } from "./middleware/rateLimiter.js";
-import { verifyToken, requireRole, verifySocketAuth } from "./middleware/authGuard.js";
+import { verifyToken, requireRole, verifySocketAuth, getJwtSecret } from "./middleware/authGuard.js";
 import { validateFileSignature, sanitizeFilename } from "./middleware/fileValidator.js";
 
 dotenv.config({ 
@@ -275,6 +275,26 @@ const sendOtpEmail = async (email, otp) => {
   }
 };
 
+// Startup Environment Validation
+const validateStartupEnvironment = () => {
+  const isProduction = process.env.NODE_ENV === "production";
+  if (isProduction) {
+    const secret = process.env.JWT_SECRET;
+    if (!secret || secret === "ai_doctor_secret_jwt_key_2026" || secret.length < 32) {
+      console.error("\n❌ [FATAL CONFIG ERROR] In production, JWT_SECRET must be configured with at least 32 characters.");
+      process.exit(1);
+    }
+    if (!process.env.MONGODB_URI) {
+      console.error("\n❌ [FATAL CONFIG ERROR] MONGODB_URI is required in production. JSON database fallback is disabled.\n");
+      process.exit(1);
+    }
+  } else {
+    if (!process.env.JWT_SECRET) {
+      console.warn("⚠️ [DEV NOTICE] JWT_SECRET is unset. Running with development fallback secret. Set JWT_SECRET in production.");
+    }
+  }
+};
+validateStartupEnvironment();
 
 const app = express();
 const server = http.createServer(app);
@@ -287,7 +307,7 @@ const io = new SocketIOServer(server, {
 });
 
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || "ai_doctor_secret_jwt_key_2026";
+const JWT_SECRET = getJwtSecret();
 
 app.use(securityHeaders());
 app.use(corsConfig());
@@ -313,7 +333,7 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
 }
 
-// Secure Protected File Streaming Gateway (Guarded by verifyToken)
+// Secure Protected File Streaming Gateway (Guarded by verifyToken & Consultation Participant Authorization)
 const serveProtectedFile = async (req, res) => {
   try {
     const rawFilename = req.params.filename;
@@ -327,6 +347,87 @@ const serveProtectedFile = async (req, res) => {
     // Guard against path traversal attacks
     if (!targetPath.startsWith(uploadsDir) || !fs.existsSync(targetPath)) {
       return res.status(404).json({ success: false, error: "Medical asset not found." });
+    }
+
+    // Granular Consultation & Report Participant Authorization
+    const userId = req.user.id?.toString();
+    let isAuthorized = false;
+
+    // 1. Check Consultation Message file association
+    if (dbFallback) {
+      const data = JSON.parse(fs.readFileSync(dbJsonPath, "utf-8"));
+      for (const consult of (data.consultations || [])) {
+        const hasMsg = (consult.messages || []).some(m => 
+          (m.fileUrl && m.fileUrl.includes(filename)) || m.fileName === filename
+        );
+        if (hasMsg) {
+          const isParticipant = (consult.patientId === userId || consult.doctorId === userId);
+          if (!isParticipant) {
+            return res.status(403).json({
+              success: false,
+              error: "Access Denied. You are not an authorized participant in this consultation.",
+              code: "FILE_UNAUTHORIZED"
+            });
+          }
+          isAuthorized = true;
+          break;
+        }
+      }
+    } else {
+      const msg = await Message.findOne({
+        $or: [
+          { fileUrl: { $regex: filename } },
+          { fileName: filename }
+        ]
+      });
+      if (msg) {
+        const consult = await Consultation.findById(msg.consultationId);
+        if (consult) {
+          const isParticipant = (consult.patientId?.toString() === userId || consult.doctorId?.toString() === userId);
+          if (!isParticipant) {
+            return res.status(403).json({
+              success: false,
+              error: "Access Denied. You are not an authorized participant in this consultation.",
+              code: "FILE_UNAUTHORIZED"
+            });
+          }
+          isAuthorized = true;
+        }
+      }
+    }
+
+    // 2. Check Patient Medical Report association
+    if (!isAuthorized) {
+      if (dbFallback) {
+        const data = JSON.parse(fs.readFileSync(dbJsonPath, "utf-8"));
+        const pat = (data.patients || []).find(p => (p.reports || []).some(r => r.name === filename));
+        if (pat) {
+          const isOwner = pat.userId === userId;
+          const isDoctorAuth = req.user.role === "doctor" && await DB.hasConsultationRelationship(pat.userId, userId);
+          if (!isOwner && !isDoctorAuth) {
+            return res.status(403).json({
+              success: false,
+              error: "Access Denied. Unauthorized medical report scan access.",
+              code: "REPORT_UNAUTHORIZED"
+            });
+          }
+          isAuthorized = true;
+        }
+      } else {
+        const pat = await Patient.findOne({ "reports.name": filename });
+        if (pat) {
+          const isOwner = pat.userId === userId;
+          const isDoctorAuth = req.user.role === "doctor" && await DB.hasConsultationRelationship(pat.userId, userId);
+          if (!isOwner && !isDoctorAuth) {
+            return res.status(403).json({
+              success: false,
+              error: "Access Denied. Unauthorized medical report scan access.",
+              code: "REPORT_UNAUTHORIZED"
+            });
+          }
+          isAuthorized = true;
+        }
+      }
     }
 
     const ext = path.extname(filename).toLowerCase();
@@ -629,7 +730,12 @@ mongoose.connect(mongoUri)
     await seedDefaultUsers();
   })
   .catch(async (err) => {
-    console.warn("MongoDB connection failed. Switching to Local JSON DB Fallback.", err.message);
+    if (process.env.NODE_ENV === "production") {
+      console.error("\n❌ [FATAL DATABASE ERROR] MongoDB connection failed in production:", err.message);
+      console.error("Local JSON file fallback is strictly disabled in production for data security and compliance. Shutting down.\n");
+      process.exit(1);
+    }
+    console.warn("MongoDB connection failed. Switching to Local JSON DB Fallback (Dev mode only).", err.message);
     dbFallback = true;
     ensureFallbackFile();
     await seedDefaultUsers();
@@ -676,12 +782,20 @@ const DB = {
   },
 
   // Patients
-  async getPatients() {
+  async getPatients(page = 1, limit = 50) {
+    const skip = (page - 1) * limit;
     if (dbFallback) {
       const data = JSON.parse(fs.readFileSync(dbJsonPath, "utf-8"));
-      return data.patients || [];
+      const all = data.patients || [];
+      const total = all.length;
+      const paginated = all.slice(skip, skip + limit);
+      return { patients: paginated, total, page, limit, totalPages: Math.ceil(total / limit) || 1 };
     }
-    return await Patient.find({});
+    const [patients, total] = await Promise.all([
+      Patient.find({}).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Patient.countDocuments({})
+    ]);
+    return { patients, total, page, limit, totalPages: Math.ceil(total / limit) || 1 };
   },
 
   async addPatient(patientData) {
@@ -918,6 +1032,27 @@ const DB = {
     return consult;
   },
 
+  async hasConsultationRelationship(patientUserId, doctorUserId) {
+    if (!patientUserId || !doctorUserId) return false;
+    const pId = patientUserId.toString();
+    const dId = doctorUserId.toString();
+    if (dbFallback) {
+      const data = JSON.parse(fs.readFileSync(dbJsonPath, "utf-8"));
+      return (data.consultations || []).some(
+        c => (c.patientId?.toString() === pId) && (c.doctorId?.toString() === dId)
+      );
+    }
+    try {
+      const count = await Consultation.countDocuments({
+        patientId: pId,
+        doctorId: dId
+      });
+      return count > 0;
+    } catch (e) {
+      return false;
+    }
+  },
+
   // Update profile
   async updateUser(userId, updatedDetails) {
     if (dbFallback) {
@@ -1076,6 +1211,18 @@ const DB = {
     return await Medication.find({ userId });
   },
 
+  async getMedicationById(medId) {
+    if (dbFallback) {
+      const data = JSON.parse(fs.readFileSync(dbJsonPath, "utf-8"));
+      return (data.medications || []).find(m => m._id === medId) || null;
+    }
+    try {
+      return await Medication.findById(medId);
+    } catch (e) {
+      return null;
+    }
+  },
+
   async addMedication(medData) {
     if (dbFallback) {
       const data = JSON.parse(fs.readFileSync(dbJsonPath, "utf-8"));
@@ -1212,12 +1359,42 @@ app.post("/api/auth/register", authRateLimiter, async (req, res) => {
   try {
     const { name, email, password, role, otp } = req.body;
     if (!name || !email || !password || !role || !otp) {
-      return res.status(400).json({ error: "Please enter all registration details, including the OTP code." });
+      return res.status(400).json({ success: false, error: "Please enter all registration details, including the OTP code." });
+    }
+
+    // Role validation (Strict Whitelist)
+    const ALLOWED_ROLES = ["patient", "doctor"];
+    if (!ALLOWED_ROLES.includes(role)) {
+      return res.status(400).json({ success: false, error: "Invalid account role. Allowed roles are 'patient' or 'doctor'." });
+    }
+
+    // Doctor credential verification
+    if (role === "doctor") {
+      const licenseNumber = req.body.licenseNumber?.trim();
+      const specialty = req.body.specialty?.trim();
+      if (!licenseNumber || licenseNumber.length < 4) {
+        return res.status(400).json({
+          success: false,
+          error: "Doctor registration requires a valid medical license number (minimum 4 characters).",
+          code: "INVALID_DOCTOR_CREDENTIALS"
+        });
+      }
+      if (!specialty || specialty.length < 3) {
+        return res.status(400).json({
+          success: false,
+          error: "Doctor registration requires a declared medical specialty.",
+          code: "INVALID_DOCTOR_SPECIALTY"
+        });
+      }
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, error: "Password must be at least 8 characters long." });
     }
 
     const cached = tempOtps.get(email.toLowerCase());
     if (!cached || cached.otp !== otp || Date.now() > cached.expiresAt) {
-      return res.status(400).json({ error: "Invalid or expired verification OTP code." });
+      return res.status(400).json({ success: false, error: "Invalid or expired verification OTP code." });
     }
 
     // OTP verified, remove from cache
@@ -1225,21 +1402,21 @@ app.post("/api/auth/register", authRateLimiter, async (req, res) => {
 
     const existing = await DB.findUserByEmail(email);
     if (existing) {
-      return res.status(400).json({ error: "User already registered with this email." });
+      return res.status(400).json({ success: false, error: "User already registered with this email." });
     }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const registrationDetails = {
-      name,
-      email,
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
       password: hashedPassword,
       role,
-      specialty: req.body.specialty || "",
+      specialty: req.body.specialty ? req.body.specialty.trim() : "",
       experience: parseInt(req.body.experience) || 0,
-      licenseNumber: req.body.licenseNumber || "",
-      hospital: req.body.hospital || "",
+      licenseNumber: req.body.licenseNumber ? req.body.licenseNumber.trim() : "",
+      hospital: req.body.hospital ? req.body.hospital.trim() : "",
       age: parseInt(req.body.age) || 0,
       gender: req.body.gender || "",
       bloodGroup: req.body.bloodGroup || "",
@@ -1637,39 +1814,65 @@ app.get("/api/db-status", (req, res) => {
   });
 });
 
-// GET Patient list
-app.get("/api/patients", verifyToken, async (req, res) => {
+// GET Patient list (Specialists only, Paginated)
+app.get("/api/patients", verifyToken, requireRole(["doctor"]), async (req, res) => {
   try {
-    if (req.user.role !== "doctor") {
-      return res.status(403).json({ error: "Access Denied. Only specialists can list patients." });
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const result = await DB.getPatients(page, limit);
+
+    res.setHeader("X-Total-Count", result.total);
+    res.setHeader("X-Page", result.page);
+    res.setHeader("X-Limit", result.limit);
+
+    if (req.query.paginated === "true") {
+      return res.json({
+        success: true,
+        data: result.patients,
+        pagination: {
+          total: result.total,
+          page: result.page,
+          limit: result.limit,
+          totalPages: result.totalPages
+        }
+      });
     }
-    const list = await DB.getPatients();
-    res.json(list);
+
+    res.json(result.patients);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // POST Add new patient
-app.post("/api/patients", verifyToken, async (req, res) => {
+app.post("/api/patients", verifyToken, requireRole(["doctor"]), async (req, res) => {
   try {
-    if (req.user.role !== "doctor") {
-      return res.status(403).json({ error: "Access Denied. Only specialists can add patients." });
-    }
     const newPatient = await DB.addPatient(req.body);
     res.json(newPatient);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// GET Single Patient by User ID
+// GET Single Patient by User ID (Restricted to self or consulting doctor)
 app.get("/api/patients/user/:userId", verifyToken, async (req, res) => {
   try {
     const { userId } = req.params;
-    if (req.user.id !== userId && req.user.role !== "doctor") {
-      return res.status(403).json({ error: "Access Denied. Unauthorized lookup." });
+    const isSelf = req.user.id === userId;
+    let isDoctorAuthorized = false;
+
+    if (req.user.role === "doctor") {
+      isDoctorAuthorized = await DB.hasConsultationRelationship(userId, req.user.id);
     }
+
+    if (!isSelf && !isDoctorAuthorized) {
+      return res.status(403).json({
+        success: false,
+        error: "Access Denied. You do not have an active consultation relationship with this patient.",
+        code: "PATIENT_RECORD_UNAUTHORIZED"
+      });
+    }
+
     let pat;
     if (dbFallback) {
       const data = JSON.parse(fs.readFileSync(dbJsonPath, "utf-8"));
@@ -1678,24 +1881,36 @@ app.get("/api/patients/user/:userId", verifyToken, async (req, res) => {
       pat = await Patient.findOne({ userId });
     }
     if (!pat) {
-      return res.status(404).json({ error: "Clinical patient profile not found." });
+      return res.status(404).json({ success: false, error: "Clinical patient profile not found." });
     }
     res.json(pat);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// POST Add Vitals Log Entry
+// POST Add Vitals Log Entry (Restricted to self or consulting doctor)
 app.post("/api/patients/:userId/vitals", verifyToken, async (req, res) => {
   try {
     const { userId } = req.params;
     const { label, bpSystolic, bpDiastolic, sugar } = req.body;
-    if (!label || !bpSystolic || !bpDiastolic || !sugar) {
-      return res.status(400).json({ error: "Missing required vitals parameters." });
+    if (!label || bpSystolic === undefined || bpDiastolic === undefined || sugar === undefined) {
+      return res.status(400).json({ success: false, error: "Missing required vitals parameters (label, bpSystolic, bpDiastolic, sugar)." });
     }
-    if (req.user.id !== userId && req.user.role !== "doctor") {
-      return res.status(403).json({ error: "Access Denied. Unauthorized access." });
+
+    const isSelf = req.user.id === userId;
+    let isDoctorAuthorized = false;
+
+    if (req.user.role === "doctor") {
+      isDoctorAuthorized = await DB.hasConsultationRelationship(userId, req.user.id);
+    }
+
+    if (!isSelf && !isDoctorAuthorized) {
+      return res.status(403).json({
+        success: false,
+        error: "Access Denied. Unauthorized to record vitals for this patient.",
+        code: "VITALS_UNAUTHORIZED"
+      });
     }
 
     let pat;
@@ -1888,75 +2103,104 @@ app.post("/api/chats/upload", verifyToken, uploadChat.fields([{ name: "file", ma
    REST Medication Scheduler Endpoints (Protected)
    ========================================================================== */
 
-// GET Medications
+// GET Medications (Protected by user ownership or consulting doctor)
 app.get("/api/medications", verifyToken, async (req, res) => {
   try {
-    const list = await DB.getMedications(req.user.id);
+    const targetUserId = req.query.patientId || req.user.id;
+    if (targetUserId !== req.user.id) {
+      if (req.user.role !== "doctor") {
+        return res.status(403).json({ success: false, error: "Access Denied. You cannot view other patients' medications." });
+      }
+      const hasRelationship = await DB.hasConsultationRelationship(targetUserId, req.user.id);
+      if (!hasRelationship) {
+        return res.status(403).json({ success: false, error: "Access Denied. No active consultation relationship with this patient." });
+      }
+    }
+    const list = await DB.getMedications(targetUserId);
     res.json(list);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// POST Add Medication
+// POST Add Medication (Patient for self or Consulting Doctor for patient)
 app.post("/api/medications", verifyToken, async (req, res) => {
   try {
-    const { name, dosage, frequency, time, startDate, endDate } = req.body;
+    const { name, dosage, frequency, time, startDate, endDate, patientId } = req.body;
     if (!name || !dosage || !frequency || !time || !startDate) {
-      return res.status(400).json({ error: "Missing required medication parameter fields." });
+      return res.status(400).json({ success: false, error: "Missing required medication parameter fields (name, dosage, frequency, time, startDate)." });
+    }
+
+    let targetUserId = req.user.id;
+    if (patientId && patientId !== req.user.id) {
+      if (req.user.role !== "doctor") {
+        return res.status(403).json({ success: false, error: "Access Denied. Only doctors can prescribe medications for other patients." });
+      }
+      const hasRelationship = await DB.hasConsultationRelationship(patientId, req.user.id);
+      if (!hasRelationship) {
+        return res.status(403).json({ success: false, error: "Access Denied. No consultation relationship with this patient." });
+      }
+      targetUserId = patientId;
     }
 
     const medData = {
-      userId: req.user.id,
-      name,
-      dosage,
-      frequency,
-      time,
+      userId: targetUserId,
+      name: name.trim(),
+      dosage: dosage.trim(),
+      frequency: frequency.trim(),
+      time: time.trim(),
       startDate,
       endDate: endDate || "",
       isActive: true
     };
 
     const newMed = await DB.addMedication(medData);
-    res.json(newMed);
+    res.status(201).json(newMed);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// PUT Update Medication
+// PUT Update Medication (Ownership verified)
 app.put("/api/medications/:id", verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
+    const med = await DB.getMedicationById(id);
+    if (!med) return res.status(404).json({ success: false, error: "Medication schedule not found." });
+
+    const isOwner = med.userId?.toString() === req.user.id;
+    const isDoctorConsulting = req.user.role === "doctor" && await DB.hasConsultationRelationship(med.userId, req.user.id);
+    if (!isOwner && !isDoctorConsulting) {
+      return res.status(403).json({ success: false, error: "Access Denied. You do not have permission to modify this medication." });
+    }
+
     const updated = await DB.updateMedication(id, req.body);
-    if (!updated) return res.status(404).json({ error: "Medication schedule not found." });
     res.json(updated);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// PUT Toggle Medication Taken status (with date-based logs)
+// PUT Toggle Medication Taken status (Ownership verified)
 app.put("/api/medications/:id/toggle", verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { taken, date } = req.body;
-    
-    // Find the medication
-    let med;
-    if (dbFallback) {
-      const data = JSON.parse(fs.readFileSync(dbJsonPath, "utf-8"));
-      med = data.medications.find(m => m._id === id);
-    } else {
-      med = await Medication.findById(id);
+    if (!date) {
+      return res.status(400).json({ success: false, error: "Date parameter is required to toggle medication status." });
     }
     
-    if (!med) return res.status(404).json({ error: "Medication not found." });
+    const med = await DB.getMedicationById(id);
+    if (!med) return res.status(404).json({ success: false, error: "Medication not found." });
     
+    // Ownership check: only patient can toggle adherence
+    if (med.userId?.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, error: "Access Denied. Only the medication owner can toggle adherence status." });
+    }
+
     if (!med.adherenceLogs) med.adherenceLogs = [];
     
     if (taken) {
-      // Add taken log if it doesn't exist for this date
       const exists = med.adherenceLogs.some(l => l.date === date && l.status === "taken");
       if (!exists) {
         med.adherenceLogs.push({
@@ -1968,11 +2212,9 @@ app.put("/api/medications/:id/toggle", verifyToken, async (req, res) => {
         });
       }
     } else {
-      // Remove taken logs for this date
       med.adherenceLogs = med.adherenceLogs.filter(l => !(l.date === date && l.status === "taken"));
     }
     
-    // Save medication
     let updated;
     if (dbFallback) {
       const data = JSON.parse(fs.readFileSync(dbJsonPath, "utf-8"));
@@ -1988,36 +2230,50 @@ app.put("/api/medications/:id/toggle", verifyToken, async (req, res) => {
     
     res.json(updated);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// DELETE Medication
+// DELETE Medication (Ownership verified)
 app.delete("/api/medications/:id", verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await DB.deleteMedication(id);
-    if (!deleted) return res.status(404).json({ error: "Medication schedule not found." });
-    res.json({ message: "Medication schedule deleted successfully." });
+    const med = await DB.getMedicationById(id);
+    if (!med) return res.status(404).json({ success: false, error: "Medication schedule not found." });
+
+    const isOwner = med.userId?.toString() === req.user.id;
+    const isDoctorConsulting = req.user.role === "doctor" && await DB.hasConsultationRelationship(med.userId, req.user.id);
+    if (!isOwner && !isDoctorConsulting) {
+      return res.status(403).json({ success: false, error: "Access Denied. You do not have permission to delete this medication schedule." });
+    }
+
+    await DB.deleteMedication(id);
+    res.json({ success: true, message: "Medication schedule deleted successfully." });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// POST Log Medication Adherence
+// POST Log Medication Adherence (Ownership verified)
 app.post("/api/medications/:id/log", verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { date, time, status } = req.body;
     if (!date || !time || !status) {
-      return res.status(400).json({ error: "Missing log details (date, time, status)." });
+      return res.status(400).json({ success: false, error: "Missing log details (date, time, status)." });
+    }
+
+    const med = await DB.getMedicationById(id);
+    if (!med) return res.status(404).json({ success: false, error: "Medication schedule not found." });
+
+    if (med.userId?.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, error: "Access Denied. Only the medication owner can log adherence." });
     }
 
     const updatedMed = await DB.logMedicationAdherence(id, { date, time, status });
-    if (!updatedMed) return res.status(404).json({ error: "Medication schedule not found." });
     res.json(updatedMed);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -2067,15 +2323,24 @@ function mapMessagesToGeminiContents(messages, uploadsDir) {
   });
 }
 
-// POST Doctor AI Research Assistant Chat
-app.post("/api/doctor/chat", aiRateLimiter, verifyToken, async (req, res) => {
+// POST Doctor AI Research Assistant Chat (Doctor Role Restricted + Timeout + Payload Validation)
+app.post("/api/doctor/chat", aiRateLimiter, verifyToken, requireRole(["doctor"]), async (req, res) => {
   let contextItem = null;
   let mode = "standard";
   try {
     const { messages, context, mode: reqMode } = req.body;
     if (reqMode) mode = reqMode;
-    const ai = getAIClient(req);
+
+    if (!Array.isArray(messages) || messages.length === 0 || messages.length > 50) {
+      return res.status(400).json({ success: false, error: "Invalid messages payload. Must provide an array of 1-50 message objects." });
+    }
+
     const userMessage = messages[messages.length - 1]?.content || "";
+    if (typeof userMessage !== "string" || !userMessage.trim() || userMessage.length > 4000) {
+      return res.status(400).json({ success: false, error: "Message content cannot be empty or exceed 4,000 characters." });
+    }
+
+    const ai = getAIClient(req);
 
     let systemInstruction = `You are an advanced Clinical Research and Pharmacological AI Assistant. Your user is a certified medical professional. 
 
@@ -2114,17 +2379,25 @@ As a clinical assistant operating in Custom Data Mode, I am restricted to answer
 
     const contents = mapMessagesToGeminiContents(messages, uploadsDir);
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents,
-      config: {
-        systemInstruction
-      }
-    });
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("AI_TIMEOUT: Gemini clinical inference timed out after 20 seconds.")), 20000)
+    );
 
-    res.json({ reply: response.text });
+    const response = await Promise.race([
+      ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents,
+        config: {
+          systemInstruction
+        }
+      }),
+      timeoutPromise
+    ]);
+
+    const replyText = response?.text || "No response generated by clinical model.";
+    res.json({ reply: replyText });
   } catch (error) {
-    console.error(error);
+    console.error("[DOCTOR CHAT ERROR]:", error.message);
     if (error.message && (error.message.includes("quota") || error.message.includes("429") || error.message.includes("RESOURCE_EXHAUSTED"))) {
       if (mode === "custom" && contextItem) {
         return res.json({
@@ -2141,21 +2414,23 @@ Your Gemini API Key has exceeded its daily free tier requests limit. Since you a
       return res.json({
         reply: `⚠️ *[Notice: Gemini API Quota Exceeded]*
         
-I have detected that your Gemini API Key has exceeded its daily free tier requests limit (20 requests/day). Here is a standard fallback response:
+I have detected that your Gemini API Key has exceeded its daily free tier requests limit. Standard clinical guidance:
 
-Based on the clinical research context provided, the patient's vitals indicate stable trends. Please review renal function (eGFR) and age-based contraindications before prescribing metformin or scan-contrast protocols.
-
-*To resolve this, please update your Gemini API billing details at https://aistudio.google.com/ or configure a new key in the settings panel.*`
+Based on the clinical research context provided, review renal function (eGFR) and age-based contraindications before prescribing metformin or scan-contrast protocols.`
       });
     }
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// 2. Doctor Patient Risk Insights API
-app.post("/api/doctor/analyze-patient", verifyToken, async (req, res) => {
+// 2. Doctor Patient Risk Insights API (Doctor Role Restricted + Output Validation)
+app.post("/api/doctor/analyze-patient", verifyToken, requireRole(["doctor"]), async (req, res) => {
   try {
     const { patientData } = req.body;
+    if (!patientData || typeof patientData !== "object") {
+      return res.status(400).json({ success: false, error: "Missing or invalid patientData payload for risk assessment." });
+    }
+
     const ai = getAIClient(req);
 
     const systemInstruction = `You are an expert Medical Data Analyst AI. Your task is to analyze a patient's historical health data and generate a concise "Risk Assessment Sheet" for their treating physician.
@@ -2173,31 +2448,51 @@ app.post("/api/doctor/analyze-patient", verifyToken, async (req, res) => {
 
     Tone: Objective, urgent where necessary, and strictly analytical. Do not diagnose the patient; assist the doctor's diagnosis.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `Analyze this data: ${JSON.stringify(patientData)}`,
-      config: {
-        systemInstruction
-      }
-    });
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("AI_TIMEOUT: Clinical risk analysis timed out after 20 seconds.")), 20000)
+    );
 
-    res.json({ analysis: response.text });
+    const response = await Promise.race([
+      ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: `Analyze this data: ${JSON.stringify(patientData)}`,
+        config: {
+          systemInstruction
+        }
+      }),
+      timeoutPromise
+    ]);
+
+    const analysisText = response?.text || "";
+    if (!analysisText) {
+      return res.status(502).json({ success: false, error: "Clinical AI provider returned an empty analysis." });
+    }
+
+    res.json({ analysis: analysisText });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
+    console.error("[RISK ANALYSIS ERROR]:", error.message);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// 3. Patient General Triage Chatbot API
-app.post("/api/patient/chat", aiRateLimiter, verifyToken, async (req, res) => {
+// 3. Patient General Triage Chatbot API (Patient Role Restricted + Payload Validation)
+app.post("/api/patient/chat", aiRateLimiter, verifyToken, requireRole(["patient"]), async (req, res) => {
   let contextItem = null;
   let mode = "standard";
   try {
-    const { messages, mode: reqMode } = req.body; // mode is "custom" (RAG) or "standard"
+    const { messages, mode: reqMode } = req.body;
     if (reqMode) mode = reqMode;
-    const ai = getAIClient(req);
+
+    if (!Array.isArray(messages) || messages.length === 0 || messages.length > 50) {
+      return res.status(400).json({ success: false, error: "Invalid messages payload. Must provide an array of 1-50 message objects." });
+    }
 
     const userMessage = messages[messages.length - 1]?.content || "";
+    if (typeof userMessage !== "string" || !userMessage.trim() || userMessage.length > 4000) {
+      return res.status(400).json({ success: false, error: "Message content cannot be empty or exceed 4,000 characters." });
+    }
+
+    const ai = getAIClient(req);
     let systemInstruction = "";
 
     if (mode === "custom") {
@@ -2205,7 +2500,7 @@ app.post("/api/patient/chat", aiRateLimiter, verifyToken, async (req, res) => {
 
       if (contextItem) {
         systemInstruction = `You are a strict Medical Clinic Assistant answering questions based ONLY on the following clinical fact sheet context. 
-        If the question cannot be answered by this context, or if the user asks something outside this clinical scope, politely decline to answer, explaining that in Custom Data Mode you are limited to the clinic's local database.
+        If the question cannot be answered by this context, politely decline to answer, explaining that in Custom Data Mode you are limited to the clinic's local database.
         
         Clinical Context Fact Sheet:
         Category: ${contextItem.category}
@@ -2233,17 +2528,25 @@ app.post("/api/patient/chat", aiRateLimiter, verifyToken, async (req, res) => {
 
     const contents = mapMessagesToGeminiContents(messages, uploadsDir);
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents,
-      config: {
-        systemInstruction
-      }
-    });
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("AI_TIMEOUT: Patient triage inference timed out after 20 seconds.")), 20000)
+    );
 
-    res.json({ reply: response.text });
+    const response = await Promise.race([
+      ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents,
+        config: {
+          systemInstruction
+        }
+      }),
+      timeoutPromise
+    ]);
+
+    const replyText = response?.text || "No response generated by triage model.";
+    res.json({ reply: replyText });
   } catch (error) {
-    console.error(error);
+    console.error("[PATIENT CHAT ERROR]:", error.message);
     if (error.message && (error.message.includes("quota") || error.message.includes("429") || error.message.includes("RESOURCE_EXHAUSTED"))) {
       if (mode === "custom" && contextItem) {
         return res.json({
@@ -2254,20 +2557,18 @@ Your Gemini API Key has exceeded its daily free tier requests limit. Since you a
 **Category:** ${contextItem.category}
 **Local Guidelines:** ${contextItem.content}
 
-*Please configure a valid API key to restore natural language processing.*`
+*Disclaimer: I am an AI, not a doctor. This does not replace professional medical advice.*`
         });
       }
       return res.json({
         reply: `⚠️ *[Notice: Gemini API Quota Exceeded]*
         
-Your Gemini API Key has exceeded its free tier requests limit. To help you triage, here is a localized guideline:
+The AI Triage system has reached its daily quota limit. If you are experiencing severe symptoms (such as chest pain, severe shortness of breath, sudden numbness, or extreme bleeding), please call emergency medical services immediately or visit the nearest emergency room.
 
-If your symptoms are severe (e.g., chest pain, shortness of breath, sudden numbness), please seek emergency care immediately (High Risk). For mild symptoms, get plenty of rest and stay hydrated (Low Risk).
-
-*Please check your Google AI Studio plan or replace your API key in the sidebar settings panel.*`
+*Disclaimer: I am an AI, not a doctor. This does not replace professional medical advice.*`
       });
     }
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

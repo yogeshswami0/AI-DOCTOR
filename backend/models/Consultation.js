@@ -67,5 +67,9 @@ const ConsultationSchema = new mongoose.Schema({
 
 // A patient and doctor should only have one consultation session
 ConsultationSchema.index({ patientId: 1, doctorId: 1 }, { unique: true });
+ConsultationSchema.index({ patientId: 1 });
+ConsultationSchema.index({ doctorId: 1 });
+ConsultationSchema.index({ status: 1 });
+ConsultationSchema.index({ createdAt: -1 });
 
 export default mongoose.model("Consultation", ConsultationSchema);

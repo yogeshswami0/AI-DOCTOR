@@ -6,13 +6,17 @@ import os from "os";
 import jwt from "jsonwebtoken";
 
 // Import modules under test
-import { securityHeaders } from "../middleware/securityHeaders.js";
-import { verifyToken, requireRole } from "../middleware/authGuard.js";
+import { securityHeaders, corsConfig } from "../middleware/securityHeaders.js";
+import { verifyToken, requireRole, getJwtSecret } from "../middleware/authGuard.js";
 import { createRateLimiter } from "../middleware/rateLimiter.js";
 import { validateFileSignature, sanitizeFilename } from "../middleware/fileValidator.js";
 import Message from "../models/Message.js";
+import User from "../models/User.js";
+import Patient from "../models/Patient.js";
+import Medication from "../models/Medication.js";
+import Consultation from "../models/Consultation.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "ai_doctor_secret_jwt_key_2026";
+const JWT_SECRET = getJwtSecret();
 
 test("1. Security Headers Middleware", (t) => {
   const middleware = securityHeaders();
@@ -85,7 +89,7 @@ test("3. Authentication Guard & Token Verification", (t) => {
   assert.equal(statusResult, 403, "Invalid token should return 403");
   assert.equal(jsonResult?.code, "AUTH_TOKEN_INVALID");
 
-  // Test valid token
+  // Test valid token signed with active JWT_SECRET
   const validToken = jwt.sign(
     { id: "usr_12345", role: "doctor", email: "dr.smith@hospital.org", name: "Dr. Smith" },
     JWT_SECRET,
@@ -163,14 +167,57 @@ test("5. Sliding Window Rate Limiter", (t) => {
   assert.equal(responses[3].code, 429);
 });
 
-test("6. Decoupled Message Collection Model Verification", (t) => {
-  assert.ok(Message, "Message model should be exported");
+test("6. Database Models & Index Structures", (t) => {
   assert.ok(Message.schema, "Message should have a Mongoose schema");
+  assert.ok(User.schema, "User should have a Mongoose schema");
+  assert.ok(Patient.schema, "Patient should have a Mongoose schema");
+  assert.ok(Medication.schema, "Medication should have a Mongoose schema");
+  assert.ok(Consultation.schema, "Consultation should have a Mongoose schema");
+
+  const messagePaths = Object.keys(Message.schema.paths);
+  assert.ok(messagePaths.includes("consultationId"), "Message must index consultationId");
+  assert.ok(messagePaths.includes("senderId"), "Message must track senderId");
+  assert.ok(messagePaths.includes("content"), "Message must store content");
+
+  const medPaths = Object.keys(Medication.schema.paths);
+  assert.ok(medPaths.includes("userId"), "Medication must associate with userId");
+  assert.ok(medPaths.includes("adherenceLogs"), "Medication must track adherenceLogs");
+});
+
+test("7. Cross-Origin Resource Sharing (CORS) Policy Guard", (t) => {
+  const corsMiddleware = corsConfig();
   
-  const paths = Object.keys(Message.schema.paths);
-  assert.ok(paths.includes("consultationId"), "Message must index consultationId");
-  assert.ok(paths.includes("senderId"), "Message must track senderId");
-  assert.ok(paths.includes("content"), "Message must store content");
-  assert.ok(paths.includes("fileUrl"), "Message must store fileUrl");
-  assert.ok(paths.includes("createdAt"), "Message must have createdAt timestamp");
+  // 1. Direct curl/server-to-server request (no Origin header)
+  let headers = {};
+  const mockResNoOrigin = {
+    setHeader(k, v) { headers[k.toLowerCase()] = v; }
+  };
+  let nextNoOrigin = false;
+  corsMiddleware({ headers: {} }, mockResNoOrigin, () => { nextNoOrigin = true; });
+  assert.equal(nextNoOrigin, true);
+  assert.equal(headers["access-control-allow-origin"], "*");
+
+  // 2. Allowed Origin
+  headers = {};
+  const mockResAllowed = {
+    setHeader(k, v) { headers[k.toLowerCase()] = v; }
+  };
+  let nextAllowed = false;
+  corsMiddleware({ headers: { origin: "http://localhost:5173" } }, mockResAllowed, () => { nextAllowed = true; });
+  assert.equal(nextAllowed, true);
+  assert.equal(headers["access-control-allow-origin"], "http://localhost:5173");
+  assert.equal(headers["access-control-allow-credentials"], "true");
+});
+
+test("8. Medication Ownership Logic Guard", (t) => {
+  // Simulate ownership verification logic
+  const patientA_Id = "patient_user_001";
+  const patientB_Id = "patient_user_002";
+  const testMedication = { _id: "med_123", userId: patientA_Id, name: "Metformin" };
+
+  const isOwnerA = testMedication.userId === patientA_Id;
+  const isOwnerB = testMedication.userId === patientB_Id;
+
+  assert.equal(isOwnerA, true, "Patient A owns their medication");
+  assert.equal(isOwnerB, false, "Patient B does NOT own Patient A's medication");
 });

@@ -58,4 +58,8 @@ const MedicationSchema = new mongoose.Schema({
   timestamps: true
 });
 
+MedicationSchema.index({ userId: 1 });
+MedicationSchema.index({ userId: 1, isActive: 1 });
+MedicationSchema.index({ createdAt: -1 });
+
 export default mongoose.model("Medication", MedicationSchema);

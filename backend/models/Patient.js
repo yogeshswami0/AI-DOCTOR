@@ -76,4 +76,8 @@ const PatientSchema = new mongoose.Schema({
   timestamps: true
 });
 
+PatientSchema.index({ userId: 1 }, { sparse: true });
+PatientSchema.index({ name: 1 });
+PatientSchema.index({ createdAt: -1 });
+
 export default mongoose.model("Patient", PatientSchema);

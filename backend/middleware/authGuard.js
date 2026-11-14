@@ -1,6 +1,15 @@
 import jwt from "jsonwebtoken";
 
-const getJwtSecret = () => process.env.JWT_SECRET || "ai_doctor_secret_jwt_key_2026";
+export const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("FATAL: JWT_SECRET environment variable is missing in production.");
+    }
+    return "ai_doctor_dev_fallback_secret_only_local_test";
+  }
+  return secret;
+};
 
 /**
  * Extracts and verifies JWT from Bearer Authorization header, query parameter, or cookie.
